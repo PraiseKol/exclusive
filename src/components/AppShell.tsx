@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Avatar } from './Avatar'
 import { Icon } from './Icon'
 import { PostModal } from './PostModal'
+import { ThemeToggle } from './ThemeToggle'
 
 const NAV = [
   ['/home', 'Home', 'home'], ['/search', 'Search', 'search'], ['/global', 'Global Posts', 'globe'],
@@ -49,21 +50,24 @@ export function AppShell({ me, email, unread, rail, children }: { me: Me; email:
           ))}
           <button className="mi dsk" onClick={() => setComposer(true)}><Icon n="plus" /><span>Post</span></button>
         </div>
-        <Link href="/profile/me" className="me">
-          <Avatar name={me.display_name} url={me.avatar_url} size={28} />
-          <span>{me.display_name}<small>{email}</small></span>
-        </Link>
+        <div className="sidefoot">
+          <Link href="/profile/me" className="me">
+            <Avatar name={me.display_name} url={me.avatar_url} size={28} />
+            <span>{me.display_name}<small>{email}</small></span>
+          </Link>
+          <div style={{ padding: '0 12px' }}><ThemeToggle /></div>
+          <button className="lk" onClick={logout}>Log out</button>
+        </div>
       </nav>
       <main>
         <div className="tb">
           <Link href="/profile/me" aria-label="My profile"><Avatar name={me.display_name} url={me.avatar_url} size={32} /></Link>
-          <i className="logo" />
+          <ThemeToggle />
           <Link href="/notifications" aria-label="Notifications" style={{ position: 'relative', width: 28, height: 28 }}>
             <Icon n="bell" />{dot && <i className="dot" style={{ left: 16, top: 0 }} />}
           </Link>
         </div>
         {children}
-        <p className="sub dsk" style={{ padding: '0 20px' }}><button className="lk" onClick={logout}>Log out</button></p>
       </main>
       <aside>{rail}</aside>
       <button className="fab" onClick={() => setComposer(true)} aria-label="New post">+</button>

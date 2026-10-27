@@ -54,6 +54,7 @@ export function ProfileView({ profile, meId, mine, connected, pending, posts, re
               <>
                 <button className="btn sec" onClick={() => setSheet('edit')}>Edit profile</button>
                 <button className="lk" onClick={() => setSheet('limits')}>Connection limits</button>
+                <button className="lk" onClick={async () => { await sb.auth.signOut(); router.replace('/welcome'); router.refresh() }}>Log out</button>
               </>
             ) : (
               <>
@@ -138,11 +139,13 @@ export function ProfileView({ profile, meId, mine, connected, pending, posts, re
 function EditModal({ profile, onClose }: { profile: any; onClose: () => void }) {
   const sb = createClient()
   const router = useRouter()
-  const [f, setF] = useState({ headline: profile.headline ?? '', bio: profile.bio ?? '', available: !!profile.available })
+  const [f, setF] = useState({ first_name: profile.first_name ?? '', last_name: profile.last_name ?? '', headline: profile.headline ?? '', bio: profile.bio ?? '', available: !!profile.available })
   const [file, setFile] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
 
   async function save() {
+    if (!f.first_name.trim() || !f.last_name.trim()) return toast('Please enter your first and last name')
+    if (file && file.size > 10 * 1024 * 1024) return toast('Profile photo must be 10 MB or smaller')
     setBusy(true)
     try {
       let avatar_url = profile.avatar_url
@@ -152,7 +155,7 @@ function EditModal({ profile, onClose }: { profile: any; onClose: () => void }) 
         if (up.error) throw up.error
         avatar_url = sb.storage.from('avatars').getPublicUrl(path).data.publicUrl
       }
-      const { error } = await sb.from('profiles').update({ ...f, avatar_url }).eq('id', profile.id)
+      const { error } = await sb.from('profiles').update({ ...f, first_name: f.first_name.trim(), last_name: f.last_name.trim(), avatar_url }).eq('id', profile.id)
       if (error) throw error
       toast('Profile updated'); onClose(); router.refresh()
     } catch (e) { toast(errMsg(e)); setBusy(false) }
@@ -160,9 +163,13 @@ function EditModal({ profile, onClose }: { profile: any; onClose: () => void }) 
   return (
     <Modal title="Edit profile" onClose={onClose}>
       <div className="mb">
+        <div style={{ display: 'flex', gap: 10 }}>
+          <label className="lab" style={{ flex: 1 }}>First name<input className="t" value={f.first_name} maxLength={60} autoComplete="given-name" onChange={(e) => setF({ ...f, first_name: e.target.value })} /></label>
+          <label className="lab" style={{ flex: 1 }}>Last name<input className="t" value={f.last_name} maxLength={60} autoComplete="family-name" onChange={(e) => setF({ ...f, last_name: e.target.value })} /></label>
+        </div>
         <label className="lab">Headline<input className="t" value={f.headline} maxLength={160} onChange={(e) => setF({ ...f, headline: e.target.value })} /></label>
         <label className="lab">Bio<textarea value={f.bio} maxLength={500} onChange={(e) => setF({ ...f, bio: e.target.value })} /></label>
-        <label className="lab">Profile photo<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
+        <label className="lab">Profile photo (up to 10 MB)<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
         <label style={{ display: 'flex', gap: 10, alignItems: 'center' }}><input type="checkbox" checked={f.available} onChange={(e) => setF({ ...f, available: e.target.checked })} /> Available for mentoring</label>
         <div className="fr"><button className="btn sec" onClick={onClose}>Cancel</button><button className="btn" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</button></div>
       </div>
