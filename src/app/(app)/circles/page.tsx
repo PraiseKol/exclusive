@@ -1,0 +1,108 @@
+'use client'
+import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useState } from 'react'
+import { Avatar } from '@/components/Avatar'
+import { Icon } from '@/components/Icon'
+import { Modal, toast } from '@/components/Modal'
+import { createClient } from '@/lib/supabase/client'
+import { ago, errMsg } from '@/lib/util'
+
+export default function Circles() {
+  const sb = createClient()
+  const router = useRouter()
+  const [tab, setTab] = useState<'requests' | 'updates'>('requests')
+  const [sub, setSub] = useState<'received' | 'sent'>('received')
+  const [rec, setRec] = useState<any[]>([])
+  const [sent, setSent] = useState<any[]>([])
+  const [upd, setUpd] = useState<any[]>([])
+  const [sheet, setSheet] = useState<null | { kind: 'goal' | 'accept'; r: any }>(null)
+  const [months, setMonths] = useState(1)
+
+  const load = useCallback(async () => {
+    const { data: { user } } = await sb.auth.getUser()
+    if (!user) return
+    const [a, b, c] = await Promise.all([
+      sb.from('mentor_requests').select('id,goal,created_at,requester:profiles!mentor_requests_requester_id_fkey(id,display_name,headline,avatar_url)').eq('mentor_id', user.id).eq('status', 'pending').order('created_at', { ascending: false }),
+      sb.from('mentor_requests').select('id,created_at,mentor:profiles!mentor_requests_mentor_id_fkey(id,display_name,headline,avatar_url)').eq('requester_id', user.id).eq('status', 'pending').order('created_at', { ascending: false }),
+      sb.from('notifications').select('id,type,body,created_at,actor:profiles!notifications_actor_id_fkey(display_name)').in('type', ['accepted', 'declined', 'renewed', 'expiring']).order('created_at', { ascending: false }).limit(30),
+    ])
+    setRec(a.data ?? []); setSent(b.data ?? []); setUpd(c.data ?? [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load() }, [load])
+
+  async function respond(r: any, accept: boolean) {
+    const { error } = await sb.rpc('respond_request', { p_request: r.id, p_accept: accept, p_months: months })
+    setSheet(null)
+    if (error) return toast(errMsg(error))
+    toast(accept ? `Accepted. ${r.requester.display_name} is now your mentee for ${months} month${months > 1 ? 's' : ''}.` : 'Request rejected')
+    load(); router.refresh()
+  }
+  async function cancel(r: any) {
+    const { error } = await sb.rpc('cancel_request', { p_request: r.id })
+    if (error) return toast(errMsg(error))
+    toast('Request cancelled'); load()
+  }
+
+  return (
+    <>
+      <div className="tabs">
+        {(['requests', 'updates'] as const).map((t) => (
+          <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>{t[0].toUpperCase() + t.slice(1)}</button>
+        ))}
+      </div>
+      {tab === 'requests' && (
+        <>
+          <div className="pb">
+            <button className={'pill' + (sub === 'received' ? ' on' : '')} onClick={() => setSub('received')}>Received {rec.length > 0 && `(${rec.length})`}</button>
+            <button className={'pill' + (sub === 'sent' ? ' on' : '')} onClick={() => setSub('sent')}>Sent</button>
+          </div>
+          {sub === 'received' && rec.map((r) => (
+            <div key={r.id} className="row" style={{ padding: '10px 20px' }}>
+              <Avatar name={r.requester.display_name} url={r.requester.avatar_url} size={44} />
+              <div className="grow"><div>{r.requester.display_name}</div><div className="sub">{r.requester.headline}</div></div>
+              {r.goal && <button className="rb" aria-label="Read note" onClick={() => setSheet({ kind: 'goal', r })}><Icon n="mail" /></button>}
+              <button className="rb" aria-label="Accept" onClick={() => { setMonths(1); setSheet({ kind: 'accept', r }) }}><Icon n="ok" /></button>
+              <button className="rb" aria-label="Reject" onClick={() => respond(r, false)}><Icon n="x" /></button>
+            </div>
+          ))}
+          {sub === 'received' && rec.length === 0 && <div className="empty">No requests received.</div>}
+          {sub === 'sent' && sent.map((r) => (
+            <div key={r.id} className="row" style={{ padding: '10px 20px' }}>
+              <Avatar name={r.mentor.display_name} url={r.mentor.avatar_url} size={44} />
+              <div className="grow"><div>{r.mentor.display_name}</div><div className="sub">{r.mentor.headline}</div></div>
+              <button className="lk" onClick={() => cancel(r)}>Cancel</button>
+            </div>
+          ))}
+          {sub === 'sent' && sent.length === 0 && <div className="empty">No requests sent. Find a mentor from Search.</div>}
+        </>
+      )}
+      {tab === 'updates' && (
+        <>
+          {upd.map((u) => (
+            <div key={u.id} className="row" style={{ padding: '12px 20px' }}>
+              <div className="grow" style={{ whiteSpace: 'normal' }}>{u.actor?.display_name ? <b style={{ fontWeight: 500 }}>{u.actor.display_name} </b> : null}{u.body}<div className="sub">{ago(u.created_at)} ago</div></div>
+            </div>
+          ))}
+          {upd.length === 0 && <div className="empty">No updates yet.</div>}
+        </>
+      )}
+
+      {sheet?.kind === 'goal' && (
+        <Modal title={`${sheet.r.requester.display_name}’s goal`} onClose={() => setSheet(null)}>
+          <div className="mb"><p style={{ margin: 0 }}>{sheet.r.goal}</p><div className="fr"><button className="btn" onClick={() => setSheet(null)}>Close</button></div></div>
+        </Modal>
+      )}
+      {sheet?.kind === 'accept' && (
+        <Modal title="Mentorship duration" onClose={() => setSheet(null)}>
+          <div className="mb">
+            {[1, 2, 3].map((m) => (
+              <label key={m} className="opt"><input type="radio" name="du" checked={months === m} onChange={() => setMonths(m)} /> {m} month{m > 1 ? 's' : ''}</label>
+            ))}
+            <div className="tip">You will be notified a week before a mentorship period expires, so you can renew or end it.</div>
+            <div className="fr"><button className="btn" style={{ width: '100%' }} onClick={() => respond(sheet.r, true)}>Start mentoring</button></div>
+          </div>
+        </Modal>
+      )}
+    </>
+  )
+}
