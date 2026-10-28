@@ -1,33 +1,35 @@
 'use client'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Avatar } from '@/components/Avatar'
 import { Modal, toast } from '@/components/Modal'
+import { RequestModal } from '@/components/RequestModal'
 import { PostCard, type Post } from '@/components/PostCard'
 import { createClient } from '@/lib/supabase/client'
 import { GRADES, errMsg } from '@/lib/util'
 
 type Tab = 'posts' | 'reflections' | 'circle' | 'events'
 
-export function ProfileView({ profile, meId, mine, connected, pending, posts, reflections, extra }: {
-  profile: any; meId: string; mine: boolean; connected: boolean; pending: boolean
+export function ProfileView({ profile, meId, mine, connected, pendingId, initialTab, initialEdit, posts, reflections, extra }: {
+  profile: any; meId: string; mine: boolean; connected: boolean; pendingId: string | null; initialTab?: string; initialEdit?: boolean
   posts: Post[]; reflections: Post[]; extra: any
 }) {
   const sb = createClient()
   const router = useRouter()
-  const [tab, setTab] = useState<Tab>('posts')
-  const [sheet, setSheet] = useState<null | 'request' | 'limits' | 'edit' | 'grade'>(null)
-  const [goal, setGoal] = useState('')
-  const [sent, setSent] = useState(pending)
-  const tabs: Tab[] = mine ? ['posts', 'reflections', 'circle', 'events'] : ['posts', 'reflections']
+  const tabs: Tab[] = mine ? ['posts', 'reflections', 'circle', 'events'] : ['posts', 'reflections', 'events']
+  const startTab = (tabs as string[]).includes(initialTab ?? '') ? (initialTab as Tab) : 'posts'
+  const [tab, setTab] = useState<Tab>(startTab)
+  useEffect(() => setTab(startTab), [startTab]) // eslint-disable-line react-hooks/exhaustive-deps
+  const [sheet, setSheet] = useState<null | 'request' | 'limits' | 'edit' | 'grade'>(mine && initialEdit ? 'edit' : null)
+  const [pid, setPid] = useState<string | null>(pendingId)
   const tier = profile.premium_tier as number
 
-  async function sendRequest() {
-    const { error } = await sb.rpc('send_mentor_request', { p_mentor: profile.id, p_goal: goal })
-    setSheet(null)
+  async function cancelRequest() {
+    if (!pid) return
+    const { error } = await sb.rpc('cancel_request', { p_request: pid })
     if (error) return toast(errMsg(error))
-    setSent(true); toast('Request sent')
+    setPid(null); toast('Request cancelled')
   }
   async function rate(v: 1 | -1) {
     const { error } = await sb.from('ratings').upsert({ rater_id: meId, ratee_id: profile.id, value: v }, { onConflict: 'rater_id,ratee_id' })
@@ -43,13 +45,14 @@ export function ProfileView({ profile, meId, mine, connected, pending, posts, re
     <>
       <div className="prof">
         <Avatar name={profile.display_name} url={profile.avatar_url} size={150} />
-        <div style={{ flex: 1, minWidth: 260 }}>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 24, fontWeight: 500 }}>{profile.display_name}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="pname" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 24, fontWeight: 500, overflowWrap: 'anywhere' }}>{profile.display_name}</span>
+            {profile.username && <span className="sub" style={{ width: '100%' }}>@{profile.username}</span>}
             {profile.available && <span className="chip">● Available</span>}
             {tier > 0 && <span className="chip">Premium</span>}
             <button className="chip" onClick={() => setSheet('grade')}>Grade {profile.grade}{mine ? ` · ${(extra.rating ?? 0).toLocaleString()}` : ''}</button>
-            <span style={{ flex: 1 }} />
+            <span className="spc" style={{ flex: 1 }} />
             {mine ? (
               <>
                 <button className="btn sec" onClick={() => setSheet('edit')}>Edit profile</button>
@@ -61,14 +64,14 @@ export function ProfileView({ profile, meId, mine, connected, pending, posts, re
                 <button className="pill" aria-label="Thumbs up" onClick={() => rate(1)}>👍</button>
                 <button className="pill" aria-label="Thumbs down" onClick={() => rate(-1)}>👎</button>
                 {connected && <Link className="btn sec" href={`/messages?to=${profile.id}`}>Message</Link>}
-                <button className="btn" disabled={connected || sent} onClick={() => setSheet('request')}>
-                  {connected ? 'In your circle' : sent ? 'Request sent' : 'Mentor me'}
-                </button>
+                {pid && !connected
+                  ? <button className="bo" style={{ padding: '10px 14px', borderRadius: 8 }} onClick={cancelRequest}>Cancel request</button>
+                  : <button className="btn" disabled={connected} onClick={() => setSheet('request')}>{connected ? 'In your circle' : 'Mentor me'}</button>}
               </>
             )}
           </div>
           <p style={{ margin: '14px 0', whiteSpace: 'pre-wrap' }}>{profile.headline}{profile.bio ? '\n' + profile.bio : ''}</p>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{(profile.interests ?? []).map((t: string) => <span key={t} className="tag">{t}</span>)}</div>
+          <div className="ptags" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{(profile.interests ?? []).map((t: string) => <span key={t} className="tag">{t}</span>)}</div>
         </div>
       </div>
 
@@ -86,31 +89,28 @@ export function ProfileView({ profile, meId, mine, connected, pending, posts, re
               ))}
             </div>
           )}
-          {posts.map((p) => <PostCard key={p.id} post={p} meId={meId} />)}
+          <div className="pgrid">{posts.map((p) => <PostCard key={p.id} post={p} meId={meId} pin={p.is_global} />)}</div>
           {posts.length === 0 && <div className="empty">No posts you can view. Regular posts are visible within the 2-layer network.</div>}
         </>
       )}
       {tab === 'reflections' && (
         <>
-          {reflections.map((p) => <PostCard key={p.id} post={p} meId={meId} />)}
+          <div className="pgrid">{reflections.map((p) => <PostCard key={p.id} post={p} meId={meId} />)}</div>
           {reflections.length === 0 && <div className="empty">Reflections appear here when a post deeply resonates.</div>}
         </>
       )}
       {tab === 'circle' && mine && <CircleTab profile={profile} extra={extra} meId={meId} />}
       {tab === 'events' && mine && <EventsTab extra={extra} meId={meId} />}
-
-      {sheet === 'request' && (
-        <Modal title="Send a request" onClose={() => setSheet(null)}>
-          <div className="mb">
-            <div className="tip">A short note about yourself and your goals helps mentors decide, and improves your chances.</div>
-            <div>
-              <textarea maxLength={200} placeholder="Add a short note about yourself and your goals (optional)" value={goal} onChange={(e) => setGoal(e.target.value)} />
-              <div className="cnt" style={{ textAlign: 'right' }}>{200 - goal.length}/200</div>
-            </div>
-            <div className="fr"><button className="btn sec" onClick={() => setSheet(null)}>Cancel</button><button className="btn" onClick={sendRequest}>Send request</button></div>
-          </div>
-        </Modal>
+      {tab === 'events' && !mine && (
+        <div style={{ padding: '12px 20px' }}>
+          {(extra.events ?? []).map((e: any) => (
+            <div key={e.id} className="row"><div className="grow" style={{ whiteSpace: 'normal' }}>{e.purpose}<div className="sub" style={{ whiteSpace: 'normal' }}>{e.event_date} {String(e.event_time).slice(0, 5)} · {e.venue}</div></div></div>
+          ))}
+          {(extra.events ?? []).length === 0 && <div className="empty">No events shared with you by {profile.display_name}. Mentors share events privately with their mentees.</div>}
+        </div>
       )}
+
+      {sheet === 'request' && <RequestModal person={{ id: profile.id, display_name: profile.display_name }} onClose={() => setSheet(null)} onSent={(id) => setPid(id)} />}
       {sheet === 'limits' && (
         <Modal title="Connection limits" onClose={() => setSheet(null)}>
           <div className="mb">

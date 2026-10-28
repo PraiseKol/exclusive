@@ -14,14 +14,18 @@ export async function Rail({ meId, tier }: { meId: string; tier: number }) {
   return (
     <>
       <div className="prem">
-        <b>Go Premium. Go Further.</b>
+        <b>💎 Go Premium. Go Further.</b>
         {tier > 0
           ? 'You are on Premium. Extra slots, DMs and scheduling are on.'
-          : 'Unlock extra mentor and mentee slots, more DMs, the tip jar and post scheduling.'}
+          : 'Unlock exclusive mentors, advanced tools and priority support for your growth journey.'}
         {tier === 0 && <div><UpgradeButton /></div>}
+        <span className="crown" aria-hidden="true">👑</span>
       </div>
       <div className="card">
-        <h4>Suggested for you</h4>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <h4 style={{ margin: 0 }}>Suggested for you</h4>
+          <Link href="/search" className="sub">See All</Link>
+        </div>
         {sug.length === 0 && <p className="sub">No suggestions yet.</p>}
         {sug.map((p: any) => (
           <div className="row" key={p.id}>

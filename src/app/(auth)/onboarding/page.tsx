@@ -4,11 +4,14 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { INTERESTS, errMsg } from '@/lib/util'
 
+const VIDEO = process.env.NEXT_PUBLIC_ONBOARDING_VIDEO_URL
+
 export default function Onboarding() {
   const router = useRouter()
   const [step, setStep] = useState<'video' | 'interests' | 'curating'>('video')
   const [picked, setPicked] = useState<string[]>([])
   const [err, setErr] = useState('')
+  const [playing, setPlaying] = useState(false)
 
   const toggle = (i: string) =>
     setPicked((p) => (p.includes(i) ? p.filter((x) => x !== i) : p.length < 20 ? [...p, i] : p))
@@ -31,17 +34,23 @@ export default function Onboarding() {
 
   return (
     <div className="auth">
-      <div className="ac">
+      <div className="ac" style={step === 'video' ? { background: 'linear-gradient(180deg,var(--b50),var(--n0))' } : undefined}>
         {step === 'video' && (
-          <>
+          <div style={{ display: 'contents' }}>
             <button className="lk" style={{ alignSelf: 'flex-end' }} onClick={() => setStep('interests')}>Skip video</button>
-            <h1>Discover the power of Exclusive</h1>
-            <button aria-label="Play explainer video" onClick={() => setStep('interests')}
-              style={{ height: 260, borderRadius: 20, background: 'linear-gradient(160deg,#1a1038,#6d19b0)', color: '#fff', fontSize: 44, display: 'grid', placeItems: 'center' }}>▶</button>
-            <p className="sub" style={{ margin: 0 }}>See how mentors, mentees and the 2-layer network work in under a minute.</p>
+            <h1 style={{ fontSize: 28, lineHeight: 1.2 }}>Discover the power of <span style={{ color: 'var(--lk)' }}>Exclusive ✨</span></h1>
+            <div style={{ borderRadius: 24, padding: 6, background: 'color-mix(in srgb, var(--b600) 18%, transparent)' }}>
+              {VIDEO && playing ? (
+                <video src={VIDEO} controls autoPlay playsInline onEnded={() => setStep('interests')} style={{ width: '100%', borderRadius: 18, display: 'block', background: '#000' }} />
+              ) : (
+                <button aria-label="Play explainer video" onClick={() => (VIDEO ? setPlaying(true) : setStep('interests'))}
+                  style={{ width: '100%', height: 190, borderRadius: 18, background: 'linear-gradient(160deg,#16213e,#4b0082)', color: '#fff', fontSize: 34, display: 'grid', placeItems: 'center' }}>▶</button>
+              )}
+            </div>
+            <p style={{ margin: 0 }}>In 2 minutes, Kayode explains how Exclusive helps you connect with mentors, build intentional relationships, and engage with a community that values depth over noise.</p>
             <div className="spacer" />
             <button className="btn" onClick={() => setStep('interests')}>Continue</button>
-          </>
+          </div>
         )}
         {step === 'interests' && (
           <>

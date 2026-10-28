@@ -24,3 +24,6 @@ Import the repo into Vercel and set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_
 - Never use the `service_role` key in client code.
 - Premium tiers are set in `profiles.premium_tier` (0, 1, 2) and organizations in `organizations.tier` until a payment provider is added.
 - A scheduled job should call `private.notify_expiring()` daily to send the one-week expiry reminders (e.g. with pg_cron).
+
+## Optional settings
+- `NEXT_PUBLIC_ONBOARDING_VIDEO_URL`: URL of the onboarding explainer video (mp4). If unset, the video step shows a placeholder and Continue.

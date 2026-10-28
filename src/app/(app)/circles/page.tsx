@@ -89,7 +89,14 @@ export default function Circles() {
 
       {sheet?.kind === 'goal' && (
         <Modal title={`${sheet.r.requester.display_name}’s goal`} onClose={() => setSheet(null)}>
-          <div className="mb"><p style={{ margin: 0 }}>{sheet.r.goal}</p><div className="fr"><button className="btn" onClick={() => setSheet(null)}>Close</button></div></div>
+          <div className="mb">
+            <div className="row" style={{ padding: 0 }}><Avatar name={sheet.r.requester.display_name} url={sheet.r.requester.avatar_url} size={40} /><div className="grow"><div>{sheet.r.requester.display_name}</div><div className="sub">{sheet.r.requester.headline}</div></div></div>
+            <p style={{ margin: 0, overflowWrap: 'anywhere' }}>{sheet.r.goal}</p>
+            <div className="fr" style={{ justifyContent: 'stretch' }}>
+              <button className="bo" style={{ flex: 1, padding: 12, borderRadius: 999 }} onClick={() => respond(sheet.r, false)}>Reject</button>
+              <button className="btn" style={{ flex: 1, padding: 12, borderRadius: 999 }} onClick={() => { setMonths(1); setSheet({ kind: 'accept', r: sheet.r }) }}>Accept</button>
+            </div>
+          </div>
         </Modal>
       )}
       {sheet?.kind === 'accept' && (

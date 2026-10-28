@@ -3,8 +3,9 @@ import { type Post } from '@/components/PostCard'
 import { createClient } from '@/lib/supabase/server'
 import { ProfileView } from './ProfileView'
 
-export default async function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProfilePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; edit?: string }> }) {
   const { id } = await params
+  const { tab, edit } = await searchParams
   const sb = await createClient()
   const { data: { user } } = await sb.auth.getUser()
   const uid = user!.id
@@ -34,6 +35,10 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
   const connected = !mine && (conns ?? []).some((c: any) => c.mentor_id === pid || c.mentee_id === pid)
 
   let extra: any = {}
+  if (!mine) {
+    const { data: ev } = await sb.from('events').select('id,mentor_id,event_date,event_time,venue,purpose').eq('mentor_id', pid).order('event_date', { ascending: false }).limit(20)
+    extra = { events: ev ?? [] }
+  }
   if (mine) {
     const [{ data: priv }, { data: drafts }, { data: limits }, { data: events }] = await Promise.all([
       sb.from('profile_private').select('rating').eq('id', uid).single(),
@@ -46,7 +51,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
 
   return (
     <ProfileView
-      profile={profile} meId={uid} mine={mine} connected={connected} pending={(pending ?? []).length > 0}
+      profile={profile} meId={uid} mine={mine} connected={connected} pendingId={(pending ?? [])[0]?.id ?? null} initialTab={tab} initialEdit={edit === '1'}
       posts={(posts ?? []) as Post[]} reflections={(reflections ?? []) as Post[]} extra={extra}
     />
   )
