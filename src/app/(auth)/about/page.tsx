@@ -10,7 +10,7 @@ export default function About() {
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value })
-  const ok = f.first && f.last && f.phone && f.gender
+  const ok = f.first && f.last && f.gender
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -22,7 +22,7 @@ export default function About() {
       if (!uid) throw new Error('Please log in again')
       const a = await sb.from('profiles').update({ first_name: f.first.trim(), last_name: f.last.trim() }).eq('id', uid)
       if (a.error) throw a.error
-      const b = await sb.from('profile_private').update({ phone: f.phone.trim(), gender: f.gender }).eq('id', uid)
+      const b = await sb.from('profile_private').update({ phone: f.phone.trim() || null, gender: f.gender }).eq('id', uid)
       if (b.error) throw b.error
       router.push('/onboarding')
     } catch (e2) {
@@ -37,7 +37,7 @@ export default function About() {
         <h1>Tell us about yourself</h1>
         <label className="lab">First name<input className="t" value={f.first} onChange={set('first')} autoComplete="given-name" /></label>
         <label className="lab">Last name<input className="t" value={f.last} onChange={set('last')} autoComplete="family-name" /></label>
-        <label className="lab">Phone number<input className="t" type="tel" value={f.phone} onChange={set('phone')} autoComplete="tel" /></label>
+        <label className="lab">Phone number (optional)<input className="t" type="tel" value={f.phone} onChange={set('phone')} autoComplete="tel" /></label>
         <div style={{ display: 'flex', gap: 10 }}>
           {['Male', 'Female'].map((g) => (
             <label key={g} className="opt" style={{ flex: 1 }}>

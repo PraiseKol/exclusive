@@ -6,6 +6,7 @@ import { Avatar } from '@/components/Avatar'
 import { Modal, toast } from '@/components/Modal'
 import { RequestModal } from '@/components/RequestModal'
 import { PostCard, type Post } from '@/components/PostCard'
+import { ReflectionCard, type ReflectionRow } from '@/components/ReflectionCard'
 import { createClient } from '@/lib/supabase/client'
 import { GRADES, errMsg } from '@/lib/util'
 
@@ -13,7 +14,7 @@ type Tab = 'posts' | 'reflections' | 'circle' | 'events'
 
 export function ProfileView({ profile, meId, mine, connected, pendingId, initialTab, initialEdit, myRating, connId, posts, reflections, extra }: {
   profile: any; meId: string; mine: boolean; connected: boolean; pendingId: string | null; initialTab?: string; initialEdit?: boolean; myRating?: number; connId?: string | null
-  posts: Post[]; reflections: Post[]; extra: any
+  posts: Post[]; reflections: ReflectionRow[]; extra: any
 }) {
   const sb = createClient()
   const router = useRouter()
@@ -106,8 +107,8 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
       )}
       {tab === 'reflections' && (
         <>
-          <div className="pgrid">{reflections.map((p) => <PostCard key={p.id} post={p} meId={meId} />)}</div>
-          {reflections.length === 0 && <div className="empty">Reflections appear here when a post deeply resonates.</div>}
+          <div className="pgrid">{reflections.map((row) => <ReflectionCard key={row.id} row={row} meId={meId} />)}</div>
+          {reflections.length === 0 && <div className="empty">Reflections appear here: posts that resonated, with the person’s own thoughts added.</div>}
         </>
       )}
       {tab === 'circle' && mine && <CircleTab profile={profile} extra={extra} meId={meId} />}
@@ -142,14 +143,7 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
           </div>
         </Modal>
       )}
-      {sheet === 'grade' && (
-        <Modal title="Grades" onClose={() => setSheet(null)}>
-          <div className="mb">
-            {Object.entries(GRADES).map(([g, r]) => <div key={g} className="row" style={{ padding: 0 }}><span className="chip">{g}</span><span>{r}</span></div>)}
-            <p className="sub" style={{ margin: 0 }}>Rating = thumbs up minus thumbs down. Only you see your exact number; everyone else sees your grade.</p>
-          </div>
-        </Modal>
-      )}
+      {sheet === 'grade' && <GradesModal grade={profile.grade} onClose={() => setSheet(null)} />}
       {sheet === 'edit' && <EditModal profile={profile} onClose={() => setSheet(null)} />}
     </>
   )
@@ -286,5 +280,33 @@ function EventsTab({ extra, meId }: { extra: any; meId: string }) {
         <div key={e.id} className="row"><div className="grow" style={{ whiteSpace: 'normal' }}>{e.purpose}<div className="sub" style={{ whiteSpace: 'normal' }}>{e.event_date} {String(e.event_time).slice(0, 5)} · {e.venue}{e.mentor_id === meId ? ' · sent by you' : ''}</div></div></div>
       ))}
     </div>
+  )
+}
+
+function GradesModal({ grade, onClose }: { grade: string; onClose: () => void }) {
+  const [g, setG] = useState<any>(null)
+  useEffect(() => { createClient().rpc('grade_scale').then(({ data }) => setG(data)) }, [])
+  const n = (x: number) => x.toLocaleString()
+  return (
+    <Modal title="How grades work" onClose={onClose}>
+      <div className="mb">
+        <p style={{ margin: 0 }}>Rating = thumbs up minus thumbs down. Only you see your exact number; everyone else sees your grade. This profile’s grade is <b>{grade}</b>.</p>
+        <p className="sub" style={{ margin: 0 }}>To keep grades fair as Exclusive grows, the bar scales with the size of the community: each grade is a share of the maximum rating possible (10%, 1%, 0.1% and 0.01% for A, B, C and D), with gentler starting levels for small communities.</p>
+        {g && (
+          <>
+            <div><b style={{ fontWeight: 500 }}>Today ({n(g.users)} members)</b></div>
+            {(['A', 'B', 'C', 'D'] as const).map((k) => <div key={k} className="row" style={{ padding: 0 }}><span className="chip">{k}</span><span>{n(g[k])}+ net rating</span></div>)}
+            <div className="row" style={{ padding: 0 }}><span className="chip">E</span><span>below {n(g.D)}</span></div>
+            <div className="sub" style={{ marginTop: 6 }}>As the community grows</div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+                <thead><tr className="sub"><th align="left">Members</th><th>A</th><th>B</th><th>C</th><th>D</th></tr></thead>
+                <tbody>{g.stages.map((s: any) => <tr key={s.users} style={{ borderTop: '.5px solid var(--n200)' }}><td style={{ padding: '6px 0' }}>{n(s.users)}</td>{(['A', 'B', 'C', 'D'] as const).map((k) => <td key={k} align="center">{n(s[k])}</td>)}</tr>)}</tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+    </Modal>
   )
 }

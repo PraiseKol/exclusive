@@ -7,6 +7,7 @@ import { ago, errMsg } from '@/lib/util'
 import { Avatar } from './Avatar'
 import { Icon } from './Icon'
 import { Modal, toast } from './Modal'
+import { ReflectModal } from './ReflectModal'
 
 export type Post = {
   id: string; author_id: string; body: string; image_url: string | null; is_global: boolean; created_at: string
@@ -20,7 +21,7 @@ export function PostCard({ post, meId, pin }: { post: Post; meId: string; pin?: 
   const sb = createClient()
   const [s, setS] = useState({ l: post.liked_by_me, r: post.reflected_by_me, n: post.noted_by_me })
   const [counts, setCounts] = useState({ l: post.like_count, r: post.reflection_count, c: post.comment_count })
-  const [sheet, setSheet] = useState<null | 'comments' | 'options' | 'global' | 'more'>(null)
+  const [sheet, setSheet] = useState<null | 'comments' | 'options' | 'global' | 'more' | 'reflect'>(null)
   const mine = post.author_id === meId
 
   async function toggle(table: 'post_likes' | 'reflections' | 'noted', key: 'l' | 'r' | 'n', ck?: 'l' | 'r') {
@@ -61,13 +62,22 @@ export function PostCard({ post, meId, pin }: { post: Post; meId: string; pin?: 
       )}
       <div className="act">
         <button className={'lkb' + (s.l ? ' on' : '')} onClick={() => toggle('post_likes', 'l', 'l')} aria-pressed={s.l}><Icon n="heart" />{counts.l}</button>
-        <button className={s.r ? 'on' : ''} onClick={() => toggle('reflections', 'r', 'r')} title="Reflect" aria-pressed={s.r}><Icon n="ref" />{counts.r}</button>
+        <button className={s.r ? 'on' : ''} onClick={() => setSheet('reflect')} title="Reflect: add your thoughts" aria-label="Reflect on this post"><Icon n="ref" />{counts.r}</button>
         <button onClick={() => setSheet('comments')}><Icon n="chat" />{counts.c}</button>
         <span className="sp" />
         <button className={s.n ? 'on' : ''} onClick={() => toggle('noted', 'n')} title="Noted" aria-pressed={s.n}><Icon n="bm" /></button>
         <button aria-label="Share" onClick={() => { navigator.clipboard?.writeText(`${location.origin}/profile/${post.author_id}`); toast('Link copied') }}><Icon n="share" /></button>
       </div>
 
+      {sheet === 'reflect' && (
+        <ReflectModal
+          post={{ id: post.id, body: post.body, image_url: post.image_url, created_at: post.created_at, author_id: post.author_id, author_name: post.author_name, author_avatar: post.author_avatar }}
+          meId={meId} onClose={() => setSheet(null)}
+          onChange={(k) => {
+            if (k === 'added') { setS((x) => ({ ...x, r: true })); setCounts((c) => ({ ...c, r: c.r + 1 })) }
+            if (k === 'removed') { setS((x) => ({ ...x, r: false })); setCounts((c) => ({ ...c, r: Math.max(0, c.r - 1) })) }
+          }} />
+      )}
       {sheet === 'comments' && <Comments postId={post.id} meId={meId} onClose={() => setSheet(null)} onAdd={() => { setCounts((c) => ({ ...c, c: c.c + 1 })) }} />}
       {sheet === 'more' && (
         <Modal title="Post options" onClose={() => setSheet(null)}>

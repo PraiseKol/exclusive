@@ -11,16 +11,22 @@ export default function Signup() {
   const [show, setShow] = useState(false)
   const [tc, setTc] = useState(false)
   const [err, setErr] = useState('')
+  const [exists, setExists] = useState(false)
   const [busy, setBusy] = useState(false)
   const ok = /\S+@\S+/.test(email) && pw.length >= 8 && tc
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
-    setBusy(true); setErr('')
-    const { error } = await createClient().auth.signUp({ email, password: pw })
+    setBusy(true); setErr(''); setExists(false)
+    const { data, error } = await createClient().auth.signUp({ email: email.trim(), password: pw })
     setBusy(false)
-    if (error) return setErr(error.message)
-    router.push('/verify?email=' + encodeURIComponent(email))
+    if (error) {
+      if (/already (registered|exists)/i.test(error.message)) return setExists(true)
+      return setErr(error.message)
+    }
+    // Supabase hides existing accounts by returning a user with no identities
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) return setExists(true)
+    router.push('/verify?email=' + encodeURIComponent(email.trim()))
   }
 
   return (
@@ -40,6 +46,11 @@ export default function Signup() {
         <label style={{ display: 'flex', gap: 8, fontSize: 13 }}>
           <input type="checkbox" checked={tc} onChange={(e) => setTc(e.target.checked)} /> I have read and agree to the Terms of Use and Privacy Policy.
         </label>
+        {exists && (
+          <div className="err" role="alert">
+            An account with this email already exists. <Link className="lk" href="/login">Log in</Link> or <Link className="lk" href="/forgot-password">reset your password</Link>.
+          </div>
+        )}
         {err && <div className="err" role="alert">{err}</div>}
         <div className="spacer" />
         <button className="btn" disabled={!ok || busy}>{busy ? 'Please wait…' : 'Continue'}</button>

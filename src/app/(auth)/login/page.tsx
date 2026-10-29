@@ -36,6 +36,7 @@ export default function Login() {
             <button type="button" onClick={() => setShow(!show)} style={{ position: 'absolute', right: 12, top: 18, fontSize: 12 }}>{show ? 'Hide' : 'Show'}</button>
           </span>
         </label>
+        <Link className="lk" href="/forgot-password" style={{ alignSelf: 'flex-end' }}>Forgot password?</Link>
         {err && <div className="err" role="alert">{err}</div>}
         <div className="spacer" />
         <button className="btn" disabled={!ok || busy}>{busy ? 'Logging in…' : 'Log In'}</button>

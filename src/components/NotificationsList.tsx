@@ -7,7 +7,7 @@ import { ago } from '@/lib/util'
 import { Avatar } from './Avatar'
 import { RequestReview } from './RequestReview'
 
-const isMention = (t: string) => t === 'comment' || t === 'mention'
+const isMention = (t: string) => t === 'comment' || t === 'mention' || t === 'reflection'
 
 export function NotificationsList({ onNavigate }: { onNavigate?: () => void }) {
   const sb = createClient()
@@ -38,7 +38,7 @@ export function NotificationsList({ onNavigate }: { onNavigate?: () => void }) {
     <>
       <Avatar name={n.actor?.display_name ?? 'Exclusive'} url={n.actor?.avatar_url} size={40} />
       <div className="grow" style={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
-        <div style={{ fontSize: 14 }}>{n.actor?.display_name && <b style={{ fontWeight: 500 }}>{n.actor.display_name} </b>}{n.type === 'comment' ? 'commented on your post: ' : ''}{n.body}</div>
+        <div style={{ fontSize: 14 }}>{n.actor?.display_name && <b style={{ fontWeight: 500 }}>{n.actor.display_name} </b>}{n.type === 'comment' ? 'commented on your post: ' : n.type === 'reflection' ? 'reflected on your post: ' : ''}{n.body}</div>
         <div className="sub" style={{ fontSize: 12 }}>{ago(n.created_at)} ago</div>
       </div>
       {!n.read && <i style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--b600)', flex: 'none' }} aria-label="Unread" />}

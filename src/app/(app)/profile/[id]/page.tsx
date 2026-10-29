@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { type Post } from '@/components/PostCard'
+import { type ReflectionRow } from '@/components/ReflectionCard'
 import { createClient } from '@/lib/supabase/server'
 import { ProfileView } from './ProfileView'
 
@@ -20,11 +21,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
     .or(`scheduled_for.is.null,scheduled_for.lte.${nowIso}`)
     .order('is_global', { ascending: false }).order('created_at', { ascending: false }).limit(50)
 
-  const { data: rrows } = await sb.from('reflections').select('post_id').eq('user_id', pid).limit(50)
-  const rids = (rrows ?? []).map((r: any) => r.post_id)
-  const { data: reflections } = rids.length
-    ? await sb.from('post_feed').select('*').in('id', rids).eq('is_disabled', false)
-    : { data: [] as Post[] }
+  const { data: reflections } = await sb.from('reflection_feed').select('*').eq('reflector_id', pid).order('created_at', { ascending: false }).limit(50)
 
   const [{ data: conns }, { data: pending }] = await Promise.all([
     sb.from('connections')
@@ -53,7 +50,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
   return (
     <ProfileView
       profile={profile} meId={uid} mine={mine} connected={connected} pendingId={(pending ?? [])[0]?.id ?? null} initialTab={tab} initialEdit={edit === '1'} myRating={mr?.value ?? 0} connId={(conns ?? []).find((c: any) => c.mentor_id === pid || c.mentee_id === pid)?.id ?? null}
-      posts={(posts ?? []) as Post[]} reflections={(reflections ?? []) as Post[]} extra={extra}
+      posts={(posts ?? []) as Post[]} reflections={(reflections ?? []) as ReflectionRow[]} extra={extra}
     />
   )
 }
