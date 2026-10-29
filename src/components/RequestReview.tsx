@@ -24,10 +24,10 @@ export function RequestReview({ id, onClose, onDone }: { id: string; onClose: ()
 
   async function respond(accept: boolean) {
     setBusy(true)
-    const { error } = await sb.rpc('respond_request', { p_request: id, p_accept: accept, p_months: months || 1 })
+    const { error } = await sb.rpc('respond_request', { p_request: id, p_accept: accept, p_months: accept && months ? months : null })
     setBusy(false)
     if (error) return toast(errMsg(error))
-    toast(accept ? `Accepted. ${r.requester.display_name} is now your mentee for ${months} month${months > 1 ? 's' : ''}.` : 'Request declined')
+    toast(accept ? `Accepted. ${r.requester.display_name} is now your mentee${months ? ` for ${months} month${months > 1 ? 's' : ''}` : ' with no end date'}.` : 'Request declined')
     onDone(); onClose()
   }
 
@@ -41,16 +41,16 @@ export function RequestReview({ id, onClose, onDone }: { id: string; onClose: ()
           <Link className="lk" href={`/profile/${r.requester.id}`} onClick={onClose}>View profile</Link>
         </div>
         {r.goal && <div><div className="sub">My goal</div><p style={{ margin: '4px 0 0', overflowWrap: 'anywhere' }}>{r.goal}</p></div>}
-        <label className="lab">Mentorship duration
+        <label className="lab">Mentorship duration (optional)
           <select value={months} onChange={(e) => setMonths(+e.target.value)} style={{ marginTop: 6 }}>
-            <option value={0}>Select duration</option>
+            <option value={0}>No set duration (indefinite)</option>
             {[1, 2, 3].map((m) => <option key={m} value={m}>{m} month{m > 1 ? 's' : ''}</option>)}
           </select>
         </label>
-        <div className="tip">You will be notified a week before a mentorship period expires, so you can renew or end it.</div>
+        <div className="tip">If you pick a duration, you’ll be notified a week before it ends so you can renew or end it. If you don’t, the mentorship has no end date until either of you ends it.</div>
         <div className="fr">
           <button className="btn sec" disabled={busy} onClick={() => respond(false)}>Decline</button>
-          <button className="btn" disabled={busy || !months} onClick={() => respond(true)}>Accept</button>
+          <button className="btn" disabled={busy} onClick={() => respond(true)}>Accept</button>
         </div>
       </div>
     </Modal>

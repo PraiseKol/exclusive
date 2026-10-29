@@ -13,6 +13,7 @@ export async function Rail({ meId, tier }: { meId: string; tier: number }) {
   const sug = (people ?? []).filter((p: any) => !linked.has(p.id)).slice(0, 5)
   return (
     <>
+      <div className="rail-scroll">
       <div className="prem">
         <b>💎 Go Premium. Go Further.</b>
         {tier > 0
@@ -34,6 +35,7 @@ export async function Rail({ meId, tier }: { meId: string; tier: number }) {
             <Link className="lk" href={`/profile/${p.id}`}>View profile</Link>
           </div>
         ))}
+      </div>
       </div>
       <div className="ft">About | Help | Privacy Policy | Terms of Service<br />© 2026 Exclusive</div>
     </>

@@ -32,6 +32,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
       .eq('status', 'active').gt('expires_at', nowIso),
     sb.from('mentor_requests').select('id').eq('requester_id', uid).eq('mentor_id', pid).eq('status', 'pending'),
   ])
+  const { data: mr } = mine ? { data: null } : await sb.from('ratings').select('value').eq('rater_id', uid).eq('ratee_id', pid).maybeSingle()
   const connected = !mine && (conns ?? []).some((c: any) => c.mentor_id === pid || c.mentee_id === pid)
 
   let extra: any = {}
@@ -51,7 +52,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
 
   return (
     <ProfileView
-      profile={profile} meId={uid} mine={mine} connected={connected} pendingId={(pending ?? [])[0]?.id ?? null} initialTab={tab} initialEdit={edit === '1'}
+      profile={profile} meId={uid} mine={mine} connected={connected} pendingId={(pending ?? [])[0]?.id ?? null} initialTab={tab} initialEdit={edit === '1'} myRating={mr?.value ?? 0} connId={(conns ?? []).find((c: any) => c.mentor_id === pid || c.mentee_id === pid)?.id ?? null}
       posts={(posts ?? []) as Post[]} reflections={(reflections ?? []) as Post[]} extra={extra}
     />
   )

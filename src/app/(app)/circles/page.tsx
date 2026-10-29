@@ -16,7 +16,7 @@ export default function Circles() {
   const [sent, setSent] = useState<any[]>([])
   const [upd, setUpd] = useState<any[]>([])
   const [sheet, setSheet] = useState<null | { kind: 'goal' | 'accept'; r: any }>(null)
-  const [months, setMonths] = useState(1)
+  const [months, setMonths] = useState(0)
 
   const load = useCallback(async () => {
     const { data: { user } } = await sb.auth.getUser()
@@ -31,10 +31,10 @@ export default function Circles() {
   useEffect(() => { load() }, [load])
 
   async function respond(r: any, accept: boolean) {
-    const { error } = await sb.rpc('respond_request', { p_request: r.id, p_accept: accept, p_months: months })
+    const { error } = await sb.rpc('respond_request', { p_request: r.id, p_accept: accept, p_months: accept && months ? months : null })
     setSheet(null)
     if (error) return toast(errMsg(error))
-    toast(accept ? `Accepted. ${r.requester.display_name} is now your mentee for ${months} month${months > 1 ? 's' : ''}.` : 'Request rejected')
+    toast(accept ? `Accepted. ${r.requester.display_name} is now your mentee${months ? ` for ${months} month${months > 1 ? 's' : ''}` : ' with no end date'}.` : 'Request rejected')
     load(); router.refresh()
   }
   async function cancel(r: any) {
@@ -61,7 +61,7 @@ export default function Circles() {
               <Avatar name={r.requester.display_name} url={r.requester.avatar_url} size={44} />
               <div className="grow"><div>{r.requester.display_name}</div><div className="sub">{r.requester.headline}</div></div>
               {r.goal && <button className="rb" aria-label="Read note" onClick={() => setSheet({ kind: 'goal', r })}><Icon n="mail" /></button>}
-              <button className="rb" aria-label="Accept" onClick={() => { setMonths(1); setSheet({ kind: 'accept', r }) }}><Icon n="ok" /></button>
+              <button className="rb" aria-label="Accept" onClick={() => { setMonths(0); setSheet({ kind: 'accept', r }) }}><Icon n="ok" /></button>
               <button className="rb" aria-label="Reject" onClick={() => respond(r, false)}><Icon n="x" /></button>
             </div>
           ))}
@@ -94,7 +94,7 @@ export default function Circles() {
             <p style={{ margin: 0, overflowWrap: 'anywhere' }}>{sheet.r.goal}</p>
             <div className="fr" style={{ justifyContent: 'stretch' }}>
               <button className="bo" style={{ flex: 1, padding: 12, borderRadius: 999 }} onClick={() => respond(sheet.r, false)}>Reject</button>
-              <button className="btn" style={{ flex: 1, padding: 12, borderRadius: 999 }} onClick={() => { setMonths(1); setSheet({ kind: 'accept', r: sheet.r }) }}>Accept</button>
+              <button className="btn" style={{ flex: 1, padding: 12, borderRadius: 999 }} onClick={() => { setMonths(0); setSheet({ kind: 'accept', r: sheet.r }) }}>Accept</button>
             </div>
           </div>
         </Modal>
@@ -102,10 +102,10 @@ export default function Circles() {
       {sheet?.kind === 'accept' && (
         <Modal title="Mentorship duration" onClose={() => setSheet(null)}>
           <div className="mb">
-            {[1, 2, 3].map((m) => (
-              <label key={m} className="opt"><input type="radio" name="du" checked={months === m} onChange={() => setMonths(m)} /> {m} month{m > 1 ? 's' : ''}</label>
+            {[0, 1, 2, 3].map((m) => (
+              <label key={m} className="opt"><input type="radio" name="du" checked={months === m} onChange={() => setMonths(m)} /> {m === 0 ? 'No set duration (indefinite)' : `${m} month${m > 1 ? 's' : ''}`}</label>
             ))}
-            <div className="tip">You will be notified a week before a mentorship period expires, so you can renew or end it.</div>
+            <div className="tip">Choosing a duration is optional. If you pick one, you’ll be notified a week before it ends. Otherwise the mentorship has no end date.</div>
             <div className="fr"><button className="btn" style={{ width: '100%' }} onClick={() => respond(sheet.r, true)}>Start mentoring</button></div>
           </div>
         </Modal>

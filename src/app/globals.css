@@ -2,19 +2,19 @@
 :root[data-theme=light]{--n0:#fff;--n50:#fdfdfd;--n100:#f9f9f9;--n200:#e1e4ea;--n400:#99a0ae;--n500:#6b7280;--n700:#2b303b;--n800:#222530;--b950:#4b0082;--b600:#9825f8;--b50:#faf4ff;--y50:#fffaf0;--y600:#d98b06;--ov:rgba(14,18,27,.3);--lk:#4b0082;color-scheme:light}
 :root[data-theme=dark]{--n0:#14161c;--n50:#191c24;--n100:#20242d;--n200:#2e3340;--n400:#8a92a3;--n500:#a3aab8;--n700:#d5d9e0;--n800:#eceef2;--b950:#6d19b0;--b600:#c084fc;--b50:#2a1840;--y50:#33280f;--y600:#f0b349;--ov:rgba(0,0,0,.55);--lk:#c084fc;color-scheme:dark}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]){--n0:#14161c;--n50:#191c24;--n100:#20242d;--n200:#2e3340;--n400:#8a92a3;--n500:#a3aab8;--n700:#d5d9e0;--n800:#eceef2;--b950:#6d19b0;--b600:#c084fc;--b50:#2a1840;--y50:#33280f;--y600:#f0b349;--ov:rgba(0,0,0,.55);--lk:#c084fc;color-scheme:dark}}
-*{box-sizing:border-box}html,body{margin:0;min-height:100%;max-width:100%;overflow-x:hidden}img,video,svg{max-width:100%}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;max-width:100%}body{overflow-x:clip}img,video,svg{max-width:100%}
 body{font:400 16px/1.5 var(--font),'Public Sans',system-ui,sans-serif;letter-spacing:-.01em;background:var(--n0);color:var(--n800)}
 a{color:inherit;text-decoration:none}button{font:inherit;letter-spacing:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
 button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid var(--b600);outline-offset:2px}
 .shell{display:grid;grid-template-columns:219px minmax(0,808px) minmax(320px,1fr);max-width:1440px;margin:0 auto;min-height:100vh}
-nav.side{border-right:.5px solid var(--n200);padding:28px 8px;display:flex;flex-direction:column;justify-content:space-between;position:sticky;top:0;height:100vh;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+nav.side{border-right:.5px solid var(--n200);padding:28px 8px;display:flex;flex-direction:column;justify-content:space-between;position:sticky;top:0;height:100vh;overflow:hidden}
 .logo{width:38px;height:38px;border-radius:50%;background:var(--b950);margin:9px 9px 25px;display:block}
 .mi{display:flex;gap:10px;align-items:center;height:48px;padding:12px;border-radius:8px;font-size:18px;width:100%;margin-bottom:16px;position:relative;text-align:left}
 .mi.on{font-weight:500;background:var(--n100)}.mi svg{width:24px;height:24px;flex:none}
 .dot{position:absolute;left:27px;top:12px;width:8px;height:8px;border-radius:50%;background:var(--b600)}
 .me{display:flex;gap:10px;align-items:center;padding:12px;font-size:16px;line-height:1.3;text-align:left;min-width:0}.me>span{min-width:0}.me small{display:block;color:var(--n400);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .av{border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:500;flex:none}
-main{min-width:0;padding:0 0 60px}aside{padding:28px 18px;border-left:.5px solid var(--n200);position:sticky;top:0;height:100vh;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;display:flex;flex-direction:column}aside>.prem,aside>.card{flex:none}
+main{min-width:0;padding:0 0 60px}aside{padding:28px 18px;border-left:.5px solid var(--n200);position:sticky;top:0;height:100vh;overflow:hidden;display:flex;flex-direction:column}.rail-scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
 .comp{display:flex;gap:10px;align-items:center;padding:28px 20px 20px;border-bottom:.5px solid var(--n200)}
 .fake{flex:1;text-align:left;border:1px solid var(--n200);border-radius:999px;padding:14px 18px;color:var(--n400);font-size:14px}
 .post{padding:18px 20px;border-bottom:.5px solid var(--n200)}.ph{display:flex;gap:12px;align-items:center}.ph b{font-weight:500}
@@ -40,7 +40,7 @@ textarea,select,input.t{width:100%;font:inherit;font-size:14px;letter-spacing:in
 .bub{max-width:70%;padding:10px 14px;border-radius:14px;background:var(--n100);font-size:15px;overflow-wrap:anywhere}.bub.mine{background:var(--b950);color:#fff;align-self:flex-end}
 .pill{padding:6px 12px;border-radius:999px;border:1px solid var(--n200);font-size:14px}.pill.on{background:var(--b950);color:#fff;border-color:var(--b950)}
 .empty{padding:60px 20px;text-align:center;color:var(--n500)}
-.ft{font-size:12px;color:var(--n400);margin-top:auto;padding-top:24px;flex:none}
+.ft{font-size:12px;color:var(--n400);padding-top:16px;flex:none}
 .opt{display:flex;gap:10px;align-items:center;border:1px solid var(--n200);border-radius:10px;padding:14px;cursor:pointer}.opt:has(input:checked){border-color:var(--b950)}
 .rb{width:34px;height:34px;border:1px solid var(--b600);border-radius:50%;display:grid;place-items:center;color:var(--b600);flex:none}.rb svg{width:16px;height:16px}
 .pb{display:flex;gap:8px;padding:14px 20px}.int{display:flex;flex-wrap:wrap;gap:8px}
@@ -146,4 +146,27 @@ input[type=file]::file-selector-button{font:inherit;font-size:13px;margin-right:
 @media(max-width:760px){
  .pgrid{padding:0;gap:0}.pgrid .post{border:0;border-bottom:.5px solid var(--n200);border-radius:0}
  .sov,.ov.np{display:none}
+}
+
+/* ===== composer fixes ===== */
+.vh{position:absolute!important;width:1px!important;height:1px!important;opacity:0;overflow:hidden;pointer-events:none;margin:0!important}
+.ibtn{position:relative;cursor:pointer}
+.modal.full{overflow:hidden;max-height:min(90dvh,720px);min-height:0}
+.modal.full .phd{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:.5px solid var(--n200)}
+.phd-title{flex:1;font-weight:500}
+.phd .postbtn{padding:8px 20px;border-radius:999px;width:auto;height:auto}
+.pbody{min-height:0;overflow:auto}
+.pbody textarea{min-height:220px;outline:none}.pbody textarea:focus-visible{outline:none}
+@media(max-width:760px){
+ .modal.full{max-height:100dvh}
+ .modal.full .phd{padding-top:calc(10px + env(safe-area-inset-top,0px))}
+ .pbody textarea{min-height:0}
+}
+
+/* sidebars: only the middle part scrolls; user menu and footer stay pinned to the bottom */
+@media(min-width:761px){nav.side>div:first-child{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}}
+.sidefoot{flex:none}
+@media(max-width:760px){
+ .pv{width:fit-content;max-width:100%}.pv img{height:110px;width:auto;max-width:100%;max-height:none;object-fit:cover;border-radius:12px}
+ .pbody{gap:8px}.pbody textarea{min-height:90px;flex:1}
 }

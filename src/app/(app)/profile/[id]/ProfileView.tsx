@@ -11,8 +11,8 @@ import { GRADES, errMsg } from '@/lib/util'
 
 type Tab = 'posts' | 'reflections' | 'circle' | 'events'
 
-export function ProfileView({ profile, meId, mine, connected, pendingId, initialTab, initialEdit, posts, reflections, extra }: {
-  profile: any; meId: string; mine: boolean; connected: boolean; pendingId: string | null; initialTab?: string; initialEdit?: boolean
+export function ProfileView({ profile, meId, mine, connected, pendingId, initialTab, initialEdit, myRating, connId, posts, reflections, extra }: {
+  profile: any; meId: string; mine: boolean; connected: boolean; pendingId: string | null; initialTab?: string; initialEdit?: boolean; myRating?: number; connId?: string | null
   posts: Post[]; reflections: Post[]; extra: any
 }) {
   const sb = createClient()
@@ -21,7 +21,7 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
   const startTab = (tabs as string[]).includes(initialTab ?? '') ? (initialTab as Tab) : 'posts'
   const [tab, setTab] = useState<Tab>(startTab)
   useEffect(() => setTab(startTab), [startTab]) // eslint-disable-line react-hooks/exhaustive-deps
-  const [sheet, setSheet] = useState<null | 'request' | 'limits' | 'edit' | 'grade'>(mine && initialEdit ? 'edit' : null)
+  const [sheet, setSheet] = useState<null | 'request' | 'limits' | 'edit' | 'grade' | 'end'>(mine && initialEdit ? 'edit' : null)
   const [pid, setPid] = useState<string | null>(pendingId)
   const tier = profile.premium_tier as number
 
@@ -31,9 +31,19 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
     if (error) return toast(errMsg(error))
     setPid(null); toast('Request cancelled')
   }
+  const [vote, setVote] = useState<number>(myRating ?? 0)
   async function rate(v: 1 | -1) {
-    const { error } = await sb.from('ratings').upsert({ rater_id: meId, ratee_id: profile.id, value: v }, { onConflict: 'rater_id,ratee_id' })
-    toast(error ? 'You can rate people within your 2-layer network.' : 'Rating saved')
+    const next = vote === v ? 0 : v
+    const { error } = await sb.rpc('rate_user', { p_ratee: profile.id, p_value: next })
+    if (error) return toast(errMsg(error))
+    setVote(next); toast(next === 0 ? 'Rating removed' : 'Rating saved')
+  }
+  async function endConnection() {
+    if (!connId) return
+    const { error } = await sb.rpc('end_connection', { p_conn: connId })
+    setSheet(null)
+    if (error) return toast(errMsg(error))
+    toast(`Your connection with ${profile.display_name} has ended`); router.refresh()
   }
   async function restore(id: string) {
     const { error } = await sb.rpc('make_global', { p_post: id })
@@ -61,9 +71,10 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
               </>
             ) : (
               <>
-                <button className="pill" aria-label="Thumbs up" onClick={() => rate(1)}>👍</button>
-                <button className="pill" aria-label="Thumbs down" onClick={() => rate(-1)}>👎</button>
+                <button className={'pill' + (vote === 1 ? ' on' : '')} aria-label="Thumbs up" aria-pressed={vote === 1} onClick={() => rate(1)}>👍</button>
+                <button className={'pill' + (vote === -1 ? ' on' : '')} aria-label="Thumbs down" aria-pressed={vote === -1} onClick={() => rate(-1)}>👎</button>
                 {connected && <Link className="btn sec" href={`/messages?to=${profile.id}`}>Message</Link>}
+                {connected && connId && <button className="bo" style={{ padding: '10px 14px', borderRadius: 8, color: '#d92d20', borderColor: '#d92d20' }} onClick={() => setSheet('end')}>End connection</button>}
                 {pid && !connected
                   ? <button className="bo" style={{ padding: '10px 14px', borderRadius: 8 }} onClick={cancelRequest}>Cancel request</button>
                   : <button className="btn" disabled={connected} onClick={() => setSheet('request')}>{connected ? 'In your circle' : 'Mentor me'}</button>}
@@ -111,6 +122,14 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
       )}
 
       {sheet === 'request' && <RequestModal person={{ id: profile.id, display_name: profile.display_name }} onClose={() => setSheet(null)} onSent={(id) => setPid(id)} />}
+      {sheet === 'end' && (
+        <Modal title="End connection" onClose={() => setSheet(null)}>
+          <div className="mb">
+            <p style={{ margin: 0 }}>End your mentorship with {profile.display_name}? You will no longer be connected, so you won’t be able to message each other, and regular posts visible only through this connection will be hidden from you both. You can send a new request later.</p>
+            <div className="fr"><button className="btn sec" onClick={() => setSheet(null)}>Cancel</button><button className="btn" style={{ background: '#d92d20' }} onClick={endConnection}>End connection</button></div>
+          </div>
+        </Modal>
+      )}
       {sheet === 'limits' && (
         <Modal title="Connection limits" onClose={() => setSheet(null)}>
           <div className="mb">
@@ -204,17 +223,22 @@ function CircleTab({ profile, extra, meId }: { profile: any; extra: any; meId: s
       {(extra.circle ?? []).map((c: any) => {
         const iMentor = c.mentor_id === meId
         const other = iMentor ? c.mentee : c.mentor
-        const left = days(c.expires_at)
+        const forever = String(c.expires_at).startsWith('infinity')
+        const left = forever ? 0 : days(c.expires_at)
         return (
           <div key={c.id} className="row">
             <Avatar name={other.display_name} url={other.avatar_url} size={40} />
-            <div className="grow">{other.display_name}<div className="sub">{iMentor ? 'Your mentee' : 'Your mentor'} · {left} day{left === 1 ? '' : 's'} left</div></div>
+            <div className="grow">{other.display_name}<div className="sub">{iMentor ? 'Your mentee' : 'Your mentor'} · {forever ? 'no end date' : `${left} day${left === 1 ? '' : 's'} left`}</div></div>
             {iMentor && (
               <>
-                <select aria-label="Renew for" value={months} onChange={(e) => setMonths(+e.target.value)} style={{ width: 90, padding: 8 }}>
+                {!forever && (
+                  <>
+                    <select aria-label="Renew for" value={months} onChange={(e) => setMonths(+e.target.value)} style={{ width: 90, padding: 8 }}>
                   {[1, 2, 3].map((m) => <option key={m} value={m}>+{m} mo</option>)}
                 </select>
                 <button className="btn sec" onClick={() => call('renew_connection', { p_conn: c.id, p_months: months }, 'Mentorship renewed')}>Renew</button>
+                  </>
+                )}
                 <button className="lk" onClick={() => call('highlight_mentee', { p_mentee: other.id }, 'Highlighted as this month’s most engaging mentee')}>Highlight</button>
               </>
             )}

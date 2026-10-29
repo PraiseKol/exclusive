@@ -64,18 +64,21 @@ export function PostModal({ me, tier, onClose }: { me: string; tier: number; onC
     }
   }
 
+  const minLocal = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+
   return (
     <div className="ov full" onClick={onClose}>
       <div className="modal full" role="dialog" aria-modal="true" aria-label="New post" onClick={(e) => e.stopPropagation()}>
-        <header className="phd">
+        <div className="phd">
           <button onClick={onClose} aria-label="Close" className="ibtn"><Icon n="x" /></button>
-          <span style={{ flex: 1, fontWeight: 500 }}>New post</span>
+          <span className="phd-title">New post</span>
           <button className={'ibtn' + (showSched ? ' on' : '')} aria-label="Schedule post" aria-pressed={showSched}
             onClick={() => (tier >= 1 ? setShowSched(!showSched) : toast('Scheduling posts is a Premium feature'))}><Icon n="clock" /></button>
-          <button className="btn" disabled={busy || !body.trim()} onClick={publish}>{busy ? 'Posting…' : sched ? 'Schedule' : 'Post'}</button>
-        </header>
+          <button className="btn postbtn" disabled={busy || !body.trim()} onClick={publish}>{busy ? 'Posting…' : sched ? 'Schedule' : 'Post'}</button>
+        </div>
+
         <div className="pbody">
-          <textarea autoFocus placeholder="What’s on your mind?" maxLength={5000} value={body} onChange={(e) => setBody(e.target.value)} />
+          <textarea autoFocus aria-label="Post text" placeholder="What’s on your mind?" maxLength={5000} value={body} onChange={(e) => setBody(e.target.value)} />
           {preview && (
             <div className="pv">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -85,20 +88,24 @@ export function PostModal({ me, tier, onClose }: { me: string; tier: number; onC
           )}
           {showSched && (
             <label className="lab">Publish at
-              <input className="t" type="datetime-local" value={sched} min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)} onChange={(e) => setSched(e.target.value)} />
+              <input className="t" type="datetime-local" value={sched} min={minLocal} onChange={(e) => setSched(e.target.value)} />
             </label>
           )}
           {global && <div className="tip">A Global Post is visible to everyone and must stay global for at least one week before you can change it.</div>}
         </div>
-        <footer className="ptool">
-          <label className="ibtn" aria-label="Add photo" style={{ cursor: 'pointer' }}>
+
+        <div className="ptool">
+          <label className="ibtn" aria-label="Add photo" title="Add photo">
             <Icon n="img" />
-            <input type="file" hidden accept="image/jpeg,image/png,image/webp" onChange={(e) => { pick(e.target.files?.[0] ?? null); e.target.value = '' }} />
+            <input className="vh" type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => { pick(e.target.files?.[0] ?? null); e.target.value = '' }} />
           </label>
-          <button className={'pill' + (global ? ' on' : '')} aria-pressed={global} onClick={() => setGlobal(!global)}>Global Post</button>
+          <button className={'ibtn' + (global ? ' on' : '')} aria-label="Make this my Global Post" aria-pressed={global} title="Make this my Global Post" onClick={() => setGlobal(!global)}>
+            <Icon n="globe" />
+          </button>
+          {global && <span className="chip">Global Post</span>}
           <span style={{ flex: 1 }} />
           <span className="cnt">{5000 - body.length}</span>
-        </footer>
+        </div>
       </div>
     </div>
   )
