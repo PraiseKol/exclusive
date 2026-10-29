@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { errMsg } from '@/lib/util'
-import { Modal, toast } from './Modal'
+import { Modal, toast, toastErr } from './Modal'
 
 export function RequestModal({ person, onClose, onSent }: { person: { id: string; display_name: string }; onClose: () => void; onSent: (requestId: string) => void }) {
   const [goal, setGoal] = useState('')
@@ -12,7 +12,7 @@ export function RequestModal({ person, onClose, onSent }: { person: { id: string
     setBusy(true)
     const { data, error } = await createClient().rpc('send_mentor_request', { p_mentor: person.id, p_goal: goal })
     setBusy(false)
-    if (error) return toast(errMsg(error))
+    if (error) return toastErr(errMsg(error))
     toast(`Request sent to ${person.display_name}`)
     onSent(data as string); onClose()
   }

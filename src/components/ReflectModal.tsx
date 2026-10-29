@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { ago, errMsg } from '@/lib/util'
 import { Avatar } from './Avatar'
-import { Modal, toast } from './Modal'
+import { Modal, toast, toastErr } from './Modal'
 
 export type QuotePost = {
   id: string; body: string; image_url: string | null; created_at?: string
@@ -54,13 +54,13 @@ export function ReflectModal({ post, meId, onClose, onChange }: {
 
   async function save() {
     const body = text.trim()
-    if (!body) return toast('Add your thoughts to reflect on this post')
+    if (!body) return toastErr('Add your thoughts to reflect on this post')
     setBusy(true)
     const { error } = mine
       ? await sb.from('reflections').update({ body }).eq('id', mine.id)
       : await sb.from('reflections').insert({ post_id: post.id, user_id: meId, body })
     setBusy(false)
-    if (error) return toast(errMsg(error))
+    if (error) return toastErr(errMsg(error))
     toast(mine ? 'Reflection updated' : 'Reflection posted')
     onChange?.(mine ? 'edited' : 'added'); onClose(); router.refresh()
   }
@@ -69,7 +69,7 @@ export function ReflectModal({ post, meId, onClose, onChange }: {
     setBusy(true)
     const { error } = await sb.from('reflections').delete().eq('id', mine.id)
     setBusy(false)
-    if (error) return toast(errMsg(error))
+    if (error) return toastErr(errMsg(error))
     toast('Reflection removed'); onChange?.('removed'); onClose(); router.refresh()
   }
 

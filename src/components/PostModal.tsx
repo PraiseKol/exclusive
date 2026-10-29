@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { errMsg } from '@/lib/util'
 import { Icon } from './Icon'
-import { toast } from './Modal'
+import { toast, toastErr } from './Modal'
 
 const MAX_IMG = 5 * 1024 * 1024
 
@@ -31,18 +31,18 @@ export function PostModal({ me, tier, onClose }: { me: string; tier: number; onC
   }, [file])
 
   function pick(f: File | null) {
-    if (f && f.size > MAX_IMG) return toast('Photos must be 5 MB or smaller')
+    if (f && f.size > MAX_IMG) return toastErr('Photos must be 5 MB or smaller')
     setFile(f)
   }
 
   async function publish() {
-    if (!body.trim()) return toast('Write something first')
+    if (!body.trim()) return toastErr('Write something first')
     setBusy(true)
+    toast('Post uploading', 'loading')
     try {
       const sb = createClient()
       let image_url: string | null = null
       if (file) {
-        toast('Post uploading…')
         const ext = file.name.split('.').pop() || 'jpg'
         const path = `${me}/${crypto.randomUUID()}.${ext}`
         const up = await sb.storage.from('post-images').upload(path, file, { contentType: file.type })
@@ -55,12 +55,12 @@ export function PostModal({ me, tier, onClose }: { me: string; tier: number; onC
       if (ins.error) throw ins.error
       if (global) {
         const g = await sb.rpc('make_global', { p_post: ins.data.id })
-        if (g.error) toast(errMsg(g.error) + ' Your post was published as a regular post.')
+        if (g.error) toastErr(errMsg(g.error) + ' Your post was published as a regular post.')
         else toast('Upload complete. Now your Global Post')
       } else toast(sched ? 'Post scheduled' : 'Upload complete')
       onClose(); router.refresh()
     } catch (e) {
-      toast(errMsg(e)); setBusy(false)
+      toastErr(errMsg(e)); setBusy(false)
     }
   }
 
@@ -73,7 +73,7 @@ export function PostModal({ me, tier, onClose }: { me: string; tier: number; onC
           <button onClick={onClose} aria-label="Close" className="ibtn"><Icon n="x" /></button>
           <span className="phd-title">New post</span>
           <button className={'ibtn' + (showSched ? ' on' : '')} aria-label="Schedule post" aria-pressed={showSched}
-            onClick={() => (tier >= 1 ? setShowSched(!showSched) : toast('Scheduling posts is a Premium feature'))}><Icon n="clock" /></button>
+            onClick={() => (tier >= 1 ? setShowSched(!showSched) : toastErr('Scheduling posts is a Premium feature'))}><Icon n="clock" /></button>
           <button className="btn postbtn" disabled={busy || !body.trim()} onClick={publish}>{busy ? 'Posting…' : sched ? 'Schedule' : 'Post'}</button>
         </div>
 

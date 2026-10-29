@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { errMsg } from '@/lib/util'
 import { Avatar } from './Avatar'
-import { Modal, toast } from './Modal'
+import { Modal, toast, toastErr } from './Modal'
 
 export function RequestReview({ id, onClose, onDone }: { id: string; onClose: () => void; onDone: () => void }) {
   const sb = createClient()
@@ -26,7 +26,7 @@ export function RequestReview({ id, onClose, onDone }: { id: string; onClose: ()
     setBusy(true)
     const { error } = await sb.rpc('respond_request', { p_request: id, p_accept: accept, p_months: accept && months ? months : null })
     setBusy(false)
-    if (error) return toast(errMsg(error))
+    if (error) return toastErr(errMsg(error))
     toast(accept ? `Accepted. ${r.requester.display_name} is now your mentee${months ? ` for ${months} month${months > 1 ? 's' : ''}` : ' with no end date'}.` : 'Request declined')
     onDone(); onClose()
   }

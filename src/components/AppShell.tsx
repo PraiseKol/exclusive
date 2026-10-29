@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Avatar } from './Avatar'
 import { Drawer } from './Drawer'
 import { Icon } from './Icon'
+import { toast } from './Modal'
 import { NotificationsPanel } from './NotificationsPanel'
 import { PostModal } from './PostModal'
 import { SearchOverlay } from './SearchOverlay'
@@ -86,9 +87,13 @@ export function AppShell({ me, email, unread, pendingReq, counts, rail, children
             <button className="bk" onClick={() => router.back()} aria-label="Back"><Icon n="back" /></button>
           )}
           {root ? <i className="logo" /> : <span className="ttl">{TITLES[path] ?? ''}</span>}
-          <Link href="/notifications" aria-label="Notifications" className="bell">
-            <Icon n="bell" />{dot && <i className="dot" style={{ left: 16, top: 0 }} />}
-          </Link>
+          {path.startsWith('/profile/') ? (
+            <button className="bell" aria-label="Copy profile link" onClick={() => { navigator.clipboard?.writeText(location.href); toast('Profile link copied') }}>⋮</button>
+          ) : (
+            <Link href="/notifications" aria-label="Notifications" className="bell">
+              <Icon n="bell" />{dot && <i className="dot" style={{ left: 16, top: 0 }} />}
+            </Link>
+          )}
         </div>
         {children}
       </main>

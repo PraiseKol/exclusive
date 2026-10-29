@@ -21,19 +21,31 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
   )
 }
 
-export const toast = (m: string) => window.dispatchEvent(new CustomEvent('toast', { detail: m }))
+export type ToastKind = 'success' | 'error' | 'loading' | 'info'
+export const toast = (m: string, kind: ToastKind = 'success') =>
+  window.dispatchEvent(new CustomEvent('toast', { detail: { m, kind } }))
+export const toastErr = (m: string) => toast(m, 'error')
 
 export function Toaster() {
-  const [m, setM] = useState('')
+  const [t, setT] = useState<{ m: string; kind: ToastKind } | null>(null)
   useEffect(() => {
-    let t: ReturnType<typeof setTimeout>
+    let timer: ReturnType<typeof setTimeout>
     const h = (e: Event) => {
-      setM((e as CustomEvent<string>).detail)
-      clearTimeout(t)
-      t = setTimeout(() => setM(''), 2800)
+      const d = (e as CustomEvent<{ m: string; kind: ToastKind }>).detail
+      setT(d)
+      clearTimeout(timer)
+      timer = setTimeout(() => setT(null), d.kind === 'loading' ? 30000 : 3500)
     }
     window.addEventListener('toast', h)
-    return () => window.removeEventListener('toast', h)
+    return () => { window.removeEventListener('toast', h); clearTimeout(timer) }
   }, [])
-  return m ? <div id="toast" role="status">{m}</div> : null
+  if (!t) return null
+  return (
+    <div className={'toast ' + t.kind} role={t.kind === 'error' ? 'alert' : 'status'}>
+      <span className="ti" aria-hidden="true">{t.kind === 'success' ? '✓' : t.kind === 'error' ? '!' : t.kind === 'info' ? 'i' : ''}</span>
+      <span className="tm">{t.m}</span>
+      <button aria-label="Dismiss" onClick={() => setT(null)}>✕</button>
+      {t.kind === 'loading' && <i className="tbar" />}
+    </div>
+  )
 }

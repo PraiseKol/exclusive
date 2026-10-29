@@ -3,7 +3,7 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { Avatar } from '@/components/Avatar'
 import { Icon } from '@/components/Icon'
-import { Modal, toast } from '@/components/Modal'
+import { Modal, toast, toastErr } from '@/components/Modal'
 import { createClient } from '@/lib/supabase/client'
 import { ago, errMsg } from '@/lib/util'
 
@@ -17,6 +17,7 @@ export default function Circles() {
   const [upd, setUpd] = useState<any[]>([])
   const [sheet, setSheet] = useState<null | { kind: 'goal' | 'accept'; r: any }>(null)
   const [months, setMonths] = useState(0)
+  const [banner, setBanner] = useState('')
 
   const load = useCallback(async () => {
     const { data: { user } } = await sb.auth.getUser()
@@ -33,13 +34,14 @@ export default function Circles() {
   async function respond(r: any, accept: boolean) {
     const { error } = await sb.rpc('respond_request', { p_request: r.id, p_accept: accept, p_months: accept && months ? months : null })
     setSheet(null)
-    if (error) return toast(errMsg(error))
+    if (error) return toastErr(errMsg(error))
     toast(accept ? `Accepted. ${r.requester.display_name} is now your mentee${months ? ` for ${months} month${months > 1 ? 's' : ''}` : ' with no end date'}.` : 'Request rejected')
+    if (accept) setBanner(`${r.requester.display_name} is now your mentee`)
     load(); router.refresh()
   }
   async function cancel(r: any) {
     const { error } = await sb.rpc('cancel_request', { p_request: r.id })
-    if (error) return toast(errMsg(error))
+    if (error) return toastErr(errMsg(error))
     toast('Request cancelled'); load()
   }
 
@@ -56,6 +58,7 @@ export default function Circles() {
             <button className={'pill' + (sub === 'received' ? ' on' : '')} onClick={() => setSub('received')}>Received {rec.length > 0 && `(${rec.length})`}</button>
             <button className={'pill' + (sub === 'sent' ? ' on' : '')} onClick={() => setSub('sent')}>Sent</button>
           </div>
+          {banner && <div className="banner" role="status"><span>{banner}</span><button aria-label="Dismiss" onClick={() => setBanner('')}>✕</button></div>}
           {sub === 'received' && rec.map((r) => (
             <div key={r.id} className="row" style={{ padding: '10px 20px' }}>
               <Avatar name={r.requester.display_name} url={r.requester.avatar_url} size={44} />

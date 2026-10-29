@@ -1,12 +1,12 @@
 'use client'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { ago, errMsg } from '@/lib/util'
 import { Avatar } from './Avatar'
 import { Icon } from './Icon'
-import { Modal, toast } from './Modal'
+import { Modal, toast, toastErr } from './Modal'
 import { ReflectModal } from './ReflectModal'
 
 export type Post = {
@@ -32,7 +32,7 @@ export function PostCard({ post, meId, pin }: { post: Post; meId: string; pin?: 
       ? sb.from(table).delete().eq('post_id', post.id).eq('user_id', meId)
       : sb.from(table).insert({ post_id: post.id, user_id: meId })
     const { error } = await q
-    if (error) { setS({ ...s }); if (ck) setCounts({ ...counts }); toast(errMsg(error)) }
+    if (error) { setS({ ...s }); if (ck) setCounts({ ...counts }); toastErr(errMsg(error)) }
     else if (!on && key === 'r') toast('Reflected. Find it under Reflections on your profile.')
     else if (!on && key === 'n') toast('Saved privately to Noted')
   }
@@ -40,7 +40,7 @@ export function PostCard({ post, meId, pin }: { post: Post; meId: string; pin?: 
   async function run(fn: 'make_global' | 'delete_post', ok: string) {
     const { error } = await sb.rpc(fn, { p_post: post.id })
     setSheet(null)
-    if (error) return toast(errMsg(error))
+    if (error) return toastErr(errMsg(error))
     toast(ok); router.refresh()
   }
 
@@ -53,7 +53,7 @@ export function PostCard({ post, meId, pin }: { post: Post; meId: string; pin?: 
           <div className="sub" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{post.author_headline}</div>
         </div>
         {pin && <span className="pinic" title="Global Post"><Icon n="pin" /></span>}
-        <button aria-label="Post options" style={{ fontSize: 20 }} onClick={() => setSheet(mine ? 'options' : 'more')}>⋯</button>
+        <button aria-label="Post options" className="dots" onClick={() => setSheet(mine ? 'options' : 'more')}><span className="dh">⋯</span><span className="dv">⋮</span></button>
       </div>
       <p className="pt">{post.body}</p>
       {post.image_url && (
@@ -90,8 +90,8 @@ export function PostCard({ post, meId, pin }: { post: Post; meId: string; pin?: 
       {sheet === 'options' && (
         <Modal title="Post options" onClose={() => setSheet(null)}>
           <div className="mb">
-            {!post.is_global && <button className="row" onClick={() => setSheet('global')}>Make global post</button>}
-            <button className="row" onClick={() => run('delete_post', post.is_global ? 'Saved to drafts. You can restore it from your profile.' : 'Post deleted')}>Delete post</button>
+            {!post.is_global && <button className="row optrow" onClick={() => setSheet('global')}><Icon n="globe" />Make global post</button>}
+            <button className="row optrow danger" onClick={() => run('delete_post', post.is_global ? 'Saved to drafts. You can restore it from your profile.' : 'Post deleted')}><Icon n="trash" />Delete post</button>
           </div>
         </Modal>
       )}
@@ -110,19 +110,25 @@ export function PostCard({ post, meId, pin }: { post: Post; meId: string; pin?: 
   )
 }
 
-type C = { id: string; body: string; parent_id: string | null; created_at: string; author: { id: string; display_name: string; avatar_url: string | null } }
+const EMOJIS = ['😀', '😂', '😍', '🙏', '👏', '🔥', '💯', '🎉', '❤️', '😢', '🤔', '👍']
+
+type C = { id: string; body: string; parent_id: string | null; created_at: string; author: { id: string; display_name: string; avatar_url: string | null; headline: string } }
 
 function Comments({ postId, meId, onClose, onAdd }: { postId: string; meId: string; onClose: () => void; onAdd: () => void }) {
   const sb = createClient()
   const [list, setList] = useState<C[]>([])
   const [likes, setLikes] = useState<Record<string, { n: number; me: boolean }>>({})
+  const [me, setMe] = useState<{ display_name: string; avatar_url: string | null } | null>(null)
   const [text, setText] = useState('')
   const [reply, setReply] = useState<C | null>(null)
   const [sort, setSort] = useState<'relevant' | 'newest'>('relevant')
+  const [menu, setMenu] = useState(false)
+  const [emoji, setEmoji] = useState(false)
+  const box = useRef<HTMLTextAreaElement>(null)
 
   const load = async () => {
     const { data } = await sb.from('comments')
-      .select('id,body,parent_id,created_at,author:profiles!comments_author_id_fkey(id,display_name,avatar_url)')
+      .select('id,body,parent_id,created_at,author:profiles!comments_author_id_fkey(id,display_name,avatar_url,headline)')
       .eq('post_id', postId).order('created_at')
     const rows = ((data as unknown as C[]) ?? [])
     setList(rows)
@@ -133,13 +139,24 @@ function Comments({ postId, meId, onClose, onAdd }: { postId: string; meId: stri
       setLikes(m)
     }
   }
-  useEffect(() => { load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    load()
+    sb.from('profiles').select('display_name,avatar_url').eq('id', meId).single().then(({ data }) => setMe(data))
+    const h = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const el = box.current
+    if (el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px' }
+  }, [text])
 
   async function send() {
     if (!text.trim()) return
     const { error } = await sb.from('comments').insert({ post_id: postId, author_id: meId, parent_id: reply?.id ?? null, body: text.trim() })
-    if (error) return toast(errMsg(error))
-    setText(''); setReply(null); onAdd(); load()
+    if (error) return toastErr(errMsg(error))
+    toast(reply ? 'Comment replied' : 'Comment posted')
+    setText(''); setReply(null); setEmoji(false); onAdd(); load()
   }
   async function like(c: C) {
     const cur = likes[c.id] ?? { n: 0, me: false }
@@ -147,7 +164,7 @@ function Comments({ postId, meId, onClose, onAdd }: { postId: string; meId: stri
     const { error } = cur.me
       ? await sb.from('comment_likes').delete().eq('comment_id', c.id).eq('user_id', meId)
       : await sb.from('comment_likes').insert({ comment_id: c.id, user_id: meId })
-    if (error) { setLikes({ ...likes }); toast(errMsg(error)) }
+    if (error) { setLikes({ ...likes }); toastErr(errMsg(error)) }
   }
 
   const replies = (id: string) => list.filter((r) => r.parent_id === id)
@@ -157,44 +174,60 @@ function Comments({ postId, meId, onClose, onAdd }: { postId: string; meId: stri
     return score(b) - score(a) || +new Date(b.created_at) - +new Date(a.created_at)
   })
 
-  const Item = ({ c, small }: { c: C; small?: boolean }) => (
-    <div className="ph" style={{ alignItems: 'flex-start', marginLeft: small ? 44 : 0, marginTop: small ? 10 : 0 }}>
-      <Avatar name={c.author.display_name} url={c.author.avatar_url} size={small ? 28 : 38} />
-      <div style={{ minWidth: 0 }}>
-        <b>{c.author.display_name}</b> <span className="sub">{ago(c.created_at)}</span>
-        <div style={{ overflowWrap: 'anywhere' }}>{c.body}</div>
-        <div className="sub" style={{ display: 'flex', gap: 16, marginTop: 2 }}>
+  const item = (c: C, small?: boolean) => (
+    <div key={c.id} className="cm" style={{ marginLeft: small ? 44 : 0 }}>
+      <Avatar name={c.author.display_name} url={c.author.avatar_url} size={small ? 28 : 36} />
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div><b style={{ fontWeight: 500 }}>{c.author.display_name}</b> <span className="sub">· {ago(c.created_at)}</span></div>
+        <div className="sub cmh">{c.author.headline}</div>
+        <div style={{ overflowWrap: 'anywhere', margin: '4px 0' }}>{c.body}</div>
+        <div className="sub" style={{ display: 'flex', gap: 16 }}>
           <button onClick={() => like(c)} aria-pressed={likes[c.id]?.me} style={{ color: likes[c.id]?.me ? '#d92d20' : undefined }}>Like{likes[c.id]?.n ? ` · ${likes[c.id].n}` : ''}</button>
-          {!small && <button onClick={() => setReply(c)}>Reply</button>}
+          {!small && <button onClick={() => { setReply(c); box.current?.focus() }}>Reply</button>}
         </div>
       </div>
     </div>
   )
 
   return (
-    <Modal title="Comments" onClose={onClose}>
-      <div className="mb" style={{ maxHeight: '55dvh', overflow: 'auto' }}>
-        {top.length > 1 && (
-          <div className="sub">
-            <select aria-label="Sort comments" value={sort} onChange={(e) => setSort(e.target.value as 'relevant' | 'newest')} style={{ width: 'auto', padding: '6px 10px', fontSize: 13 }}>
-              <option value="relevant">Most relevant</option><option value="newest">Newest</option>
-            </select>
+    <div className="ov sheetov" onClick={onClose}>
+      <div className="modal sheet" role="dialog" aria-modal="true" aria-label="Comments" onClick={(e) => e.stopPropagation()}>
+        <div className="grab" />
+        <div className="sheet-head">
+          <div style={{ position: 'relative' }}>
+            <button className="sortbtn" aria-expanded={menu} onClick={() => setMenu(!menu)}>{sort === 'relevant' ? 'Most relevant' : 'Newest'} <Icon n="chev" /></button>
+            {menu && (
+              <div className="sortmenu" role="menu">
+                <button role="menuitem" onClick={() => { setSort('relevant'); setMenu(false) }}>Most relevant</button>
+                <button role="menuitem" onClick={() => { setSort('newest'); setMenu(false) }}>Newest</button>
+              </div>
+            )}
           </div>
-        )}
-        {top.length === 0 && <div className="empty" style={{ padding: 20 }}>No comments yet. Start the conversation.</div>}
-        {top.map((c) => (
-          <div key={c.id}>
-            <Item c={c} />
-            {replies(c.id).map((r) => <Item key={r.id} c={r} small />)}
+          <button aria-label="Close comments" onClick={onClose} style={{ width: 28, height: 28 }}><Icon n="x" /></button>
+        </div>
+        <div className="sheet-list">
+          {top.length === 0 && <div className="empty" style={{ padding: 30 }}>No comments yet. Start the conversation.</div>}
+          {top.map((c) => (
+            <div key={c.id} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {item(c)}
+              {replies(c.id).map((r) => item(r, true))}
+            </div>
+          ))}
+        </div>
+        {reply && <div className="replying">Replying to <b style={{ fontWeight: 500 }}>{reply.author.display_name}</b><button aria-label="Cancel reply" onClick={() => setReply(null)}>✕</button></div>}
+        {emoji && <div className="emojis">{EMOJIS.map((e) => <button key={e} aria-label={`Insert ${e}`} onClick={() => { setText((t) => t + e); box.current?.focus() }}>{e}</button>)}</div>}
+        <div className="cin">
+          <Avatar name={me?.display_name} url={me?.avatar_url} size={36} />
+          <div className="cbox">
+            <textarea ref={box} rows={1} aria-label="Add a comment" placeholder="Add a comment" maxLength={2000} value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }} />
+            {text.trim()
+              ? <button className="sendc" aria-label="Send comment" onClick={send}><Icon n="send" /></button>
+              : <button className="emo" aria-label="Add emoji" aria-pressed={emoji} onClick={() => setEmoji(!emoji)}><Icon n="smile" /></button>}
           </div>
-        ))}
+        </div>
       </div>
-      {reply && <div className="sub" style={{ padding: '0 18px 8px', display: 'flex', justifyContent: 'space-between' }}>Replying to {reply.author.display_name}<button onClick={() => setReply(null)}>Cancel</button></div>}
-      <div className="fr" style={{ padding: '0 18px 18px' }}>
-        <input className="t" style={{ flex: 1 }} placeholder="Add a comment" value={text} maxLength={2000}
-          onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()} />
-        <button className="btn" disabled={!text.trim()} onClick={send}>Post</button>
-      </div>
-    </Modal>
+    </div>
   )
 }
