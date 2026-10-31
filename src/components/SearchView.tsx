@@ -9,7 +9,7 @@ import { INTERESTS } from '@/lib/util'
 const COLS = 'id,display_name,headline,avatar_url,username'
 type P = { id: string; display_name: string; headline: string; avatar_url: string | null; username: string | null }
 
-export function SearchView({ q }: { q: string }) {
+export function SearchView({ q, variant = 'grid', onNavigate }: { q: string; variant?: 'grid' | 'list'; onNavigate?: () => void }) {
   const [me, setMe] = useState('')
   const [linked, setLinked] = useState<Set<string>>(new Set())
   const [sentTo, setSentTo] = useState<Set<string>>(new Set())
@@ -68,6 +68,22 @@ export function SearchView({ q }: { q: string }) {
           <span className="hl">{p.headline || (p.username ? '@' + p.username : '')}</span>
         </Link>
         <button className="mm" disabled={connected || sent} onClick={() => setReq(p)}>{connected ? 'In your circle' : sent ? 'Request sent' : 'Mentor me'}</button>
+      </div>
+    )
+  }
+
+  if (variant === 'list') {
+    return (
+      <div className="sres">
+        {res === null && <div className="empty" style={{ padding: 24 }}>Searching…</div>}
+        {res !== null && res.length === 0 && <div className="empty" style={{ padding: 24 }}>No matches. Try another name, role or topic.</div>}
+        {(res ?? []).slice(0, 8).map((p) => (
+          <Link key={p.id} href={`/profile/${p.id}`} className="row" onClick={onNavigate}>
+            <Avatar name={p.display_name} url={p.avatar_url} size={40} />
+            <div className="grow"><div style={{ fontSize: 15 }}>{p.display_name}</div><div className="sub">{p.headline || (p.username ? '@' + p.username : '')}</div></div>
+            <span className="lk">View profile</span>
+          </Link>
+        ))}
       </div>
     )
   }

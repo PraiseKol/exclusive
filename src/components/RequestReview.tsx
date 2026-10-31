@@ -4,12 +4,13 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { errMsg } from '@/lib/util'
 import { Avatar } from './Avatar'
+import { DEFAULT_DURATION, DurationPicker, durationArgs, durationLabel, durationValid, type Duration } from './DurationPicker'
 import { Modal, toast, toastErr } from './Modal'
 
 export function RequestReview({ id, onClose, onDone }: { id: string; onClose: () => void; onDone: () => void }) {
   const sb = createClient()
   const [r, setR] = useState<any>(null)
-  const [months, setMonths] = useState(0)
+  const [dur, setDur] = useState<Duration>(DEFAULT_DURATION)
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
@@ -24,10 +25,10 @@ export function RequestReview({ id, onClose, onDone }: { id: string; onClose: ()
 
   async function respond(accept: boolean) {
     setBusy(true)
-    const { error } = await sb.rpc('respond_request', { p_request: id, p_accept: accept, p_months: accept && months ? months : null })
+    const { error } = await sb.rpc('respond_request', { p_request: id, p_accept: accept, ...(accept ? durationArgs(dur) : { p_months: null, p_ends_at: null }) })
     setBusy(false)
     if (error) return toastErr(errMsg(error))
-    toast(accept ? `Accepted. ${r.requester.display_name} is now your mentee${months ? ` for ${months} month${months > 1 ? 's' : ''}` : ' with no end date'}.` : 'Request declined')
+    toast(accept ? `Accepted. ${r.requester.display_name} is now your mentee ${durationLabel(dur)}.` : 'Request declined')
     onDone(); onClose()
   }
 
@@ -41,16 +42,11 @@ export function RequestReview({ id, onClose, onDone }: { id: string; onClose: ()
           <Link className="lk" href={`/profile/${r.requester.id}`} onClick={onClose}>View profile</Link>
         </div>
         {r.goal && <div><div className="sub">My goal</div><p style={{ margin: '4px 0 0', overflowWrap: 'anywhere' }}>{r.goal}</p></div>}
-        <label className="lab">Mentorship duration (optional)
-          <select value={months} onChange={(e) => setMonths(+e.target.value)} style={{ marginTop: 6 }}>
-            <option value={0}>No set duration (indefinite)</option>
-            {[1, 2, 3].map((m) => <option key={m} value={m}>{m} month{m > 1 ? 's' : ''}</option>)}
-          </select>
-        </label>
+        <div className="lab">Mentorship duration (optional)<DurationPicker value={dur} onChange={setDur} /></div>
         <div className="tip">If you pick a duration, you’ll be notified a week before it ends so you can renew or end it. If you don’t, the mentorship has no end date until either of you ends it.</div>
         <div className="fr">
           <button className="btn sec" disabled={busy} onClick={() => respond(false)}>Decline</button>
-          <button className="btn" disabled={busy} onClick={() => respond(true)}>Accept</button>
+          <button className="btn" disabled={busy || !durationValid(dur)} onClick={() => respond(true)}>Accept</button>
         </div>
       </div>
     </Modal>

@@ -259,3 +259,34 @@ main:has(.msg-wrap){padding-bottom:0}
  .bk2{display:grid}
  main:has(.msg-wrap){padding-bottom:100px}
 }
+
+/* ===== post page, image grids, duration picker, search dropdown, video ===== */
+.plink{display:block;color:inherit}
+.postpage{display:flex;flex-direction:column;min-height:calc(100vh - 20px)}
+.postpage .cthread{flex:1;display:flex;flex-direction:column;min-height:0}
+.cthread .sheet-list{flex:1}
+.cthread.inline .cdock{position:sticky;bottom:0;background:var(--n0);z-index:4}
+.cthread.inline .sheet-list{overflow:visible}
+.cthread:not(.inline){display:flex;flex-direction:column;flex:1;min-height:0}
+.sheet-x{position:absolute;top:10px;right:12px;width:28px;height:28px;display:grid;place-items:center;z-index:2}
+.modal.sheet{position:relative}
+.igrid{display:grid;gap:4px;border-radius:18px;overflow:hidden;margin:12px 0;grid-template-columns:1fr 1fr}
+.igrid img{width:100%;height:100%;object-fit:cover;display:block;min-height:0}
+.igrid.n2{height:280px}
+.igrid.n3{height:320px;grid-template-rows:1fr 1fr}.igrid.n3 img:first-child{grid-row:1/3}
+.igrid.n4{height:320px;grid-template-rows:1fr 1fr}
+.pvs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.dur-radios{display:none;flex-direction:column;gap:8px}.dur{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+.sres{padding:6px 12px}.sres .row{padding:10px 8px;border-radius:10px}.sres .row:hover{background:var(--n100)}
+.ytbox{position:relative;width:100%;aspect-ratio:9/16;max-height:62vh;margin:0 auto;border-radius:18px;overflow:hidden;background:#000}
+.ytbox iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.ytposter{position:relative;display:grid;place-items:center;width:100%;height:230px;border-radius:18px;background:linear-gradient(160deg,#16213e,#4b0082) center/cover no-repeat;color:#fff}
+.playbtn{width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.88);color:var(--b950);display:grid;place-items:center;font-size:22px}
+@media(max-width:760px){
+ .igrid.n2{height:200px}.igrid.n3,.igrid.n4{height:240px}
+ .dur-select{display:none}.dur-radios{display:flex}
+ body:has(.postpage) nav.side{display:none}
+ body:has(.postpage) main{padding-bottom:0}
+ .postpage{min-height:calc(100dvh - 60px)}
+ .ytbox{max-height:54vh}
+}

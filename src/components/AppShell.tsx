@@ -86,9 +86,9 @@ export function AppShell({ me, email, unread, pendingReq, counts, rail, children
           ) : (
             <button className="bk" onClick={() => router.back()} aria-label="Back"><Icon n="back" /></button>
           )}
-          {root ? <i className="logo" /> : <span className="ttl">{TITLES[path] ?? ''}</span>}
-          {path.startsWith('/profile/') ? (
-            <button className="bell" aria-label="Copy profile link" onClick={() => { navigator.clipboard?.writeText(location.href); toast('Profile link copied') }}>⋮</button>
+          {root ? <i className="logo" /> : <span className="ttl">{path.startsWith('/post/') ? 'Post' : TITLES[path] ?? ''}</span>}
+          {path.startsWith('/profile/') || path.startsWith('/post/') ? (
+            <button className="bell" aria-label="Copy link" onClick={() => { navigator.clipboard?.writeText(location.href); toast('Link copied') }}>⋮</button>
           ) : (
             <Link href="/notifications" aria-label="Notifications" className="bell">
               <Icon n="bell" />{dot && <i className="dot" style={{ left: 16, top: 0 }} />}

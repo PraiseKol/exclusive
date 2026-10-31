@@ -18,9 +18,11 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
           <input autoFocus type="search" aria-label="Search" placeholder="Search mentors, topics..." value={q} onChange={(e) => setQ(e.target.value)} />
         </label>
       </div>
-      <div className="spanel" onClick={(e) => e.stopPropagation()}>
-        <SearchView q={q} />
-      </div>
+      {q.trim() && (
+        <div className="spanel" onClick={(e) => e.stopPropagation()}>
+          <SearchView q={q} variant="list" onNavigate={onClose} />
+        </div>
+      )}
     </div>
   )
 }

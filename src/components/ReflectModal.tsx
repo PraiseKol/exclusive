@@ -8,7 +8,7 @@ import { Avatar } from './Avatar'
 import { Modal, toast, toastErr } from './Modal'
 
 export type QuotePost = {
-  id: string; body: string; image_url: string | null; created_at?: string
+  id: string; body: string; image_url: string | null; images?: string[]; created_at?: string
   author_id: string; author_name: string; author_avatar: string | null; author_headline?: string
 }
 
@@ -21,9 +21,9 @@ export function QuotedPost({ q }: { q: QuotePost }) {
         {q.created_at && <span className="sub" style={{ fontSize: 12 }}>· {ago(q.created_at)}</span>}
       </div>
       <p className="qt">{q.body}</p>
-      {q.image_url && (
+      {(q.images?.[0] || q.image_url) && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img className="qimg" src={q.image_url} alt="Quoted post attachment" />
+        <img className="qimg" src={(q.images?.[0] || q.image_url) as string} alt="Quoted post attachment" />
       )}
     </div>
   )

@@ -11,6 +11,7 @@ const LOADING = [
   ['Your circle is forming…', 'Your next great connection is closer than you think.'],
 ]
 
+const YT_ID = process.env.NEXT_PUBLIC_ONBOARDING_YOUTUBE_ID || 'I5H_1jPhJrs'
 const VIDEO = process.env.NEXT_PUBLIC_ONBOARDING_VIDEO_URL
 
 export default function Onboarding() {
@@ -51,11 +52,20 @@ export default function Onboarding() {
             <button className="lk" style={{ alignSelf: 'flex-end' }} onClick={() => setStep('interests')}>Skip video</button>
             <h1 style={{ fontSize: 28, lineHeight: 1.2 }}>Discover the power of <span style={{ color: 'var(--lk)' }}>Exclusive ✨</span></h1>
             <div style={{ borderRadius: 24, padding: 6, background: 'color-mix(in srgb, var(--b600) 18%, transparent)' }}>
-              {VIDEO && playing ? (
-                <video src={VIDEO} controls autoPlay playsInline onEnded={() => setStep('interests')} style={{ width: '100%', borderRadius: 18, display: 'block', background: '#000' }} />
+              {playing ? (
+                VIDEO ? (
+                  <video src={VIDEO} controls autoPlay playsInline style={{ width: '100%', borderRadius: 18, display: 'block', background: '#000' }} />
+                ) : (
+                  <div className="ytbox">
+                    <iframe src={`https://www.youtube-nocookie.com/embed/${YT_ID}?autoplay=1&rel=0&playsinline=1`} title="Welcome to Exclusive"
+                      allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen />
+                  </div>
+                )
               ) : (
-                <button aria-label="Play explainer video" onClick={() => (VIDEO ? setPlaying(true) : setStep('interests'))}
-                  style={{ width: '100%', height: 190, borderRadius: 18, background: 'linear-gradient(160deg,#16213e,#4b0082)', color: '#fff', fontSize: 34, display: 'grid', placeItems: 'center' }}>▶</button>
+                <button aria-label="Play explainer video" className="ytposter" onClick={() => setPlaying(true)}
+                  style={{ backgroundImage: VIDEO ? undefined : `linear-gradient(rgba(0,0,0,.25),rgba(0,0,0,.25)), url(https://i.ytimg.com/vi/${YT_ID}/hqdefault.jpg)` }}>
+                  <span className="playbtn">▶</span>
+                </button>
               )}
             </div>
             <p style={{ margin: 0 }}>In 2 minutes, Kayode explains how Exclusive helps you connect with mentors, build intentional relationships, and engage with a community that values depth over noise.</p>

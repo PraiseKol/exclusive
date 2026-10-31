@@ -7,12 +7,13 @@ import { Icon } from './Icon'
 import { toast, toastErr } from './Modal'
 
 const MAX_IMG = 5 * 1024 * 1024
+const MAX_FILES = 4
 
 export function PostModal({ me, tier, onClose }: { me: string; tier: number; onClose: () => void }) {
   const router = useRouter()
   const [body, setBody] = useState('')
-  const [file, setFile] = useState<File | null>(null)
-  const [preview, setPreview] = useState<string | null>(null)
+  const [files, setFiles] = useState<File[]>([])
+  const [previews, setPreviews] = useState<string[]>([])
   const [global, setGlobal] = useState(false)
   const [sched, setSched] = useState('')
   const [showSched, setShowSched] = useState(false)
@@ -24,15 +25,21 @@ export function PostModal({ me, tier, onClose }: { me: string; tier: number; onC
     return () => window.removeEventListener('keydown', h)
   }, [onClose])
   useEffect(() => {
-    if (!file) return setPreview(null)
-    const u = URL.createObjectURL(file)
-    setPreview(u)
-    return () => URL.revokeObjectURL(u)
-  }, [file])
+    const urls = files.map((f) => URL.createObjectURL(f))
+    setPreviews(urls)
+    return () => urls.forEach((u) => URL.revokeObjectURL(u))
+  }, [files])
 
-  function pick(f: File | null) {
-    if (f && f.size > MAX_IMG) return toastErr('Photos must be 5 MB or smaller')
-    setFile(f)
+  function pick(list: FileList | null) {
+    if (!list) return
+    const add: File[] = []
+    for (const f of Array.from(list)) {
+      if (f.size > MAX_IMG) { toastErr(`“${f.name}” is over 5 MB`); continue }
+      add.push(f)
+    }
+    const next = [...files, ...add].slice(0, MAX_FILES)
+    if (files.length + add.length > MAX_FILES) toastErr(`You can add up to ${MAX_FILES} photos`)
+    setFiles(next)
   }
 
   async function publish() {
@@ -41,16 +48,16 @@ export function PostModal({ me, tier, onClose }: { me: string; tier: number; onC
     toast('Post uploading', 'loading')
     try {
       const sb = createClient()
-      let image_url: string | null = null
-      if (file) {
+      const images: string[] = []
+      for (const file of files) {
         const ext = file.name.split('.').pop() || 'jpg'
         const path = `${me}/${crypto.randomUUID()}.${ext}`
         const up = await sb.storage.from('post-images').upload(path, file, { contentType: file.type })
         if (up.error) throw up.error
-        image_url = sb.storage.from('post-images').getPublicUrl(path).data.publicUrl
+        images.push(sb.storage.from('post-images').getPublicUrl(path).data.publicUrl)
       }
       const ins = await sb.from('posts')
-        .insert({ author_id: me, body: body.trim(), image_url, scheduled_for: sched ? new Date(sched).toISOString() : null })
+        .insert({ author_id: me, body: body.trim(), image_url: images[0] ?? null, images, scheduled_for: sched ? new Date(sched).toISOString() : null })
         .select('id').single()
       if (ins.error) throw ins.error
       if (global) {
@@ -79,11 +86,15 @@ export function PostModal({ me, tier, onClose }: { me: string; tier: number; onC
 
         <div className="pbody">
           <textarea autoFocus aria-label="Post text" placeholder="What’s on your mind?" maxLength={5000} value={body} onChange={(e) => setBody(e.target.value)} />
-          {preview && (
-            <div className="pv">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={preview} alt="Selected photo preview" />
-              <button aria-label="Remove photo" onClick={() => setFile(null)}>✕</button>
+          {previews.length > 0 && (
+            <div className="pvs">
+              {previews.map((u, i) => (
+                <div className="pv" key={u}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={u} alt={`Selected photo ${i + 1}`} />
+                  <button aria-label={`Remove photo ${i + 1}`} onClick={() => setFiles(files.filter((_, j) => j !== i))}>✕</button>
+                </div>
+              ))}
             </div>
           )}
           {showSched && (
@@ -95,9 +106,9 @@ export function PostModal({ me, tier, onClose }: { me: string; tier: number; onC
         </div>
 
         <div className="ptool">
-          <label className="ibtn" aria-label="Add photo" title="Add photo">
+          <label className="ibtn" aria-label="Add photos" title="Add photos (up to 4)">
             <Icon n="img" />
-            <input className="vh" type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => { pick(e.target.files?.[0] ?? null); e.target.value = '' }} />
+            <input className="vh" type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(e) => { pick(e.target.files); e.target.value = '' }} />
           </label>
           <button className={'ibtn' + (global ? ' on' : '')} aria-label="Make this my Global Post" aria-pressed={global} title="Make this my Global Post" onClick={() => setGlobal(!global)}>
             <Icon n="globe" />
