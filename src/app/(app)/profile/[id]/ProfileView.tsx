@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Avatar } from '@/components/Avatar'
+import { Icon } from '@/components/Icon'
 import { Modal, toast, toastErr } from '@/components/Modal'
 import { RequestModal } from '@/components/RequestModal'
 import { PostCard, type Post } from '@/components/PostCard'
@@ -54,6 +55,55 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
 
   return (
     <>
+      <div className="pm">
+        <div className="pcover" />
+        <div className="pm-body">
+          <div className="avwrap pm-av">
+            <Avatar name={profile.display_name} url={profile.avatar_url} size={84} />
+            <button className="gbadge" aria-label={`Grade ${profile.grade}. How grades work`} onClick={() => setSheet('grade')}><span className="star">★</span> {profile.grade}</button>
+          </div>
+          <div className="pm-name">{profile.display_name}</div>
+          {profile.username && <div className="sub">@{profile.username}</div>}
+          <div className="sub pm-head">{profile.headline}{profile.bio ? ' · ' + profile.bio : ''}</div>
+          <div className="pm-stats">
+            {mine ? (
+              <>
+                <span className="stat"><Icon n="up" /> {(extra.ratingCounts?.up ?? 0).toLocaleString()}</span>
+                <span className="stat"><Icon n="down" /> {(extra.ratingCounts?.down ?? 0).toLocaleString()}</span>
+              </>
+            ) : (
+              <>
+                <button className={'rate' + (vote === 1 ? ' on' : '')} aria-label="Thumbs up" aria-pressed={vote === 1} onClick={() => rate(1)}><Icon n="up" /></button>
+                <button className={'rate' + (vote === -1 ? ' on' : '')} aria-label="Thumbs down" aria-pressed={vote === -1} onClick={() => rate(-1)}><Icon n="down" /></button>
+              </>
+            )}
+            <span style={{ flex: 1 }} />
+            <button className="infob" aria-label="How grades work" onClick={() => setSheet('grade')}><Icon n="info" /></button>
+          </div>
+          {mine ? (
+            <>
+              <button className="btn pm-cta" onClick={() => setSheet('edit')}>Edit profile</button>
+              <div className="pm-links">
+                <button className="lk" onClick={() => setSheet('limits')}>Connection limits</button>
+                <button className="lk" onClick={async () => { await sb.auth.signOut(); router.replace('/welcome'); router.refresh() }}>Log out</button>
+              </div>
+            </>
+          ) : (
+            <>
+              {pid && !connected
+                ? <button className="bo pm-cta" onClick={cancelRequest}>Cancel request</button>
+                : <button className="btn pm-cta" disabled={connected} onClick={() => setSheet('request')}>{connected ? 'In your circle' : 'Mentor me'}</button>}
+              {connected && (
+                <div className="pm-links">
+                  <Link className="lk" href={`/messages?to=${profile.id}`}>Message</Link>
+                  {connId && <button className="lk" style={{ color: '#d92d20' }} onClick={() => setSheet('end')}>End connection</button>}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
       <div className="prof">
         <div className="avwrap">
           <Avatar name={profile.display_name} url={profile.avatar_url} size={150} />
@@ -65,6 +115,7 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
             {profile.username && <span className="sub" style={{ width: '100%' }}>@{profile.username}</span>}
             {profile.available && <span className="chip">● Available</span>}
             {tier > 0 && <span className="chip">Premium</span>}
+            {mine && <span className="sub stat" style={{ display: 'inline-flex', gap: 10 }}><span className="stat"><Icon n="up" /> {(extra.ratingCounts?.up ?? 0).toLocaleString()}</span><span className="stat"><Icon n="down" /> {(extra.ratingCounts?.down ?? 0).toLocaleString()}</span></span>}
             <button className="chip gchip" onClick={() => setSheet('grade')}>Grade {profile.grade}{mine ? ` · ${(extra.rating ?? 0).toLocaleString()}` : ''}</button>
             <span className="spc" style={{ flex: 1 }} />
             {mine ? (
@@ -75,8 +126,8 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
               </>
             ) : (
               <>
-                <button className={'pill' + (vote === 1 ? ' on' : '')} aria-label="Thumbs up" aria-pressed={vote === 1} onClick={() => rate(1)}>👍</button>
-                <button className={'pill' + (vote === -1 ? ' on' : '')} aria-label="Thumbs down" aria-pressed={vote === -1} onClick={() => rate(-1)}>👎</button>
+                <button className={'rate' + (vote === 1 ? ' on' : '')} aria-label="Thumbs up" aria-pressed={vote === 1} onClick={() => rate(1)}><Icon n="up" /></button>
+                <button className={'rate' + (vote === -1 ? ' on' : '')} aria-label="Thumbs down" aria-pressed={vote === -1} onClick={() => rate(-1)}><Icon n="down" /></button>
                 {connected && <Link className="btn sec" href={`/messages?to=${profile.id}`}>Message</Link>}
                 {connected && connId && <button className="bo" style={{ padding: '10px 14px', borderRadius: 8, color: '#d92d20', borderColor: '#d92d20' }} onClick={() => setSheet('end')}>End connection</button>}
                 {pid && !connected
@@ -90,8 +141,8 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
         </div>
       </div>
 
-      <div className="tabs">
-        {tabs.map((t) => <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>{t[0].toUpperCase() + t.slice(1)}</button>)}
+      <div className="tabs ptabs">
+        {tabs.map((t) => <button key={t} className={(tab === t ? 'on' : '') + (t === 'events' && !mine ? ' evother' : '')} onClick={() => setTab(t)}>{t[0].toUpperCase() + t.slice(1)}</button>)}
       </div>
 
       {tab === 'posts' && (
@@ -135,28 +186,26 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
         </Modal>
       )}
       {sheet === 'limits' && (
-        <Modal title="Connection limits" onClose={() => setSheet(null)}>
+        <Modal title="Connection Limits" onClose={() => setSheet(null)}>
           <div className="mb">
-            <p className="sub" style={{ margin: 0 }}>Your limits for mentors, mentees and direct messages this month.</p>
-            <div className={'plan' + (tier === 0 ? ' cur' : '')}>
-              <div className="planh"><b style={{ fontWeight: 500 }}>Standard plan</b>{tier === 0 && <span className="chip">Your plan</span>}</div>
-              <div className="pchips">
-                <span className="pchip">Mentors {tier === 0 ? `${extra.limits?.mentors_used}/` : ''}5</span>
-                <span className="pchip">Mentees {tier === 0 ? `${extra.limits?.mentees_used}/` : ''}30</span>
-                <span className="pchip">{tier === 0 ? `${extra.limits?.emergency_left} of ` : ''}1 Emergency DM</span>
-                <span className="pchip">{tier === 0 ? `${extra.limits?.important_left} of ` : ''}2 Important DMs</span>
-              </div>
+            <p className="sub" style={{ margin: 0 }}>See how many mentors and mentees you can connect with on your plan.</p>
+            <div className="planrow"><span className="pico">✦</span><b>Standard Plan</b>{tier === 0 && <span className="here">You’re here</span>}</div>
+            <div className="pchips g">
+              <span className="pchip">5 mentors slots</span><span className="pchip">30 mentees slots</span>
+              <span className="pchip">1 emergency DM/month</span><span className="pchip">2 important DMs/month</span>
             </div>
-            <div className={'plan' + (tier > 0 ? ' cur' : '')}>
-              <div className="planh"><b style={{ fontWeight: 500 }}>💎 Premium plan</b>{tier > 0 && <span className="chip">Your plan</span>}</div>
-              <div className="pchips">
-                <span className="pchip">Mentors {tier > 0 ? `${extra.limits?.mentors_used}/` : ''}7</span>
-                <span className="pchip">Mentees {tier > 0 ? `${extra.limits?.mentees_used}/` : ''}40</span>
-                <span className="pchip">{tier > 0 ? `${extra.limits?.emergency_left} of ` : ''}2 Emergency DMs</span>
-                <span className="pchip">{tier > 0 ? `${extra.limits?.important_left} of ` : ''}4 Important DMs</span>
-              </div>
+            <div className="planrow"><span className="pico pr">♛</span><b>Premium Plan</b>{tier > 0 && <span className="here">You’re here</span>}</div>
+            <div className="pchips">
+              <span className="pchip">7 mentors slots</span><span className="pchip">40 mentees slots</span>
+              <span className="pchip">2 emergency DMs/month</span><span className="pchip">4 important DMs/month</span>
             </div>
-            {tier === 0 && <button className="btn" style={{ width: '100%', padding: 14, borderRadius: 999 }} onClick={() => toast('Premium checkout is coming soon', 'info')}>Upgrade to Premium</button>}
+            {extra.limits && (
+              <p className="sub" style={{ margin: 0, fontSize: 13 }}>
+                Using {extra.limits.mentors_used} of {extra.limits.mentors_cap} mentor slots and {extra.limits.mentees_used} of {extra.limits.mentees_cap} mentee slots.
+                Direct messages left this month: {extra.limits.emergency_left} emergency, {extra.limits.important_left} important.
+              </p>
+            )}
+            {tier === 0 && <button className="btn" style={{ width: '100%', padding: 14, borderRadius: 8 }} onClick={() => toast('Premium checkout is coming soon', 'info')}>Upgrade to Premium</button>}
           </div>
         </Modal>
       )}

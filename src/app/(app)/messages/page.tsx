@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Avatar } from '@/components/Avatar'
@@ -26,6 +27,7 @@ function Messenger() {
   const [text, setText] = useState('')
   const [lim, setLim] = useState<any>(null)
   const [pick, setPick] = useState(false)
+  const [catMenu, setCatMenu] = useState(false)
   const [ready, setReady] = useState(false)
   const end = useRef<HTMLDivElement>(null)
 
@@ -105,7 +107,7 @@ function Messenger() {
   const left = (c: Cat) => (c === 'general' ? null : lim ? lim[c + '_left'] : null)
 
   const empty = (
-    <div className="empty" style={{ paddingTop: 70 }}>
+    <div className="empty big" style={{ paddingTop: 70 }}>
       <Icon n="mail" />
       <div style={{ fontWeight: 500, color: 'var(--n800)', marginTop: 10 }}>Start a conversation</div>
       <div style={{ fontSize: 14, marginTop: 4 }}>Once you start conversations with mentors or mentees, they’ll show up here.</div>
@@ -134,7 +136,7 @@ function Messenger() {
               <div style={{ fontWeight: 500 }}>{p.display_name}</div>
               <div className="sub pv1">{c ? `${c.last.sender_id === me ? 'You: ' : ''}${c.last.body}` : 'Start a conversation'}</div>
             </div>
-            {c && c.unread > 0 ? <span className="dmb">{c.unread}</span> : <span className="dmb ghost"><Icon n="chevr" /></span>}
+            {c && c.unread > 0 && <span className="dmb" aria-label={`${c.unread} unread`}>{c.unread}</span>}
           </button>
         ))}
         {ready && partners.length > 0 && <button className="btn" style={{ margin: '12px 16px' }} onClick={() => setPick(true)}>New message</button>}
@@ -146,11 +148,9 @@ function Messenger() {
           <>
             <div className="chd">
               <button className="bk2" aria-label="Back to conversations" onClick={back}><Icon n="back" /></button>
-              <Avatar name={partner.display_name} url={partner.avatar_url} size={40} />
-              <div className="grow" style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 500 }}>{partner.display_name}</div>
-                <div className="sub pv1" style={{ fontSize: 13 }}>{partner.headline}</div>
-              </div>
+              <Avatar name={partner.display_name} url={partner.avatar_url} size={32} />
+              <div className="grow" style={{ minWidth: 0, fontWeight: 500, fontSize: 15 }}>{partner.display_name}</div>
+              <Link className="chmore" href={`/profile/${partner.id}`} aria-label={`View ${partner.display_name}’s profile`}>⋮</Link>
             </div>
             <div className="thread">
               {thread.length === 0 && <div className="empty" style={{ padding: 40 }}>No {cat} messages with {partner.display_name} yet. Say hello.</div>}
@@ -160,20 +160,26 @@ function Messenger() {
               <div ref={end} />
             </div>
             <div className="composer">
-              <div className="sendas" role="group" aria-label="Send as">
-                <span className="sub">Send as</span>
-                {CATS.map((c) => (
-                  <button key={c} className={'pill sm' + (cat === c ? ' on' : '')} aria-pressed={cat === c} onClick={() => setCat(c)}>
-                    {label(c)}{left(c) !== null && <span className="sub" style={{ color: 'inherit', opacity: 0.8 }}> ({left(c)} left)</span>}
-                  </button>
-                ))}
-              </div>
+              {cat !== 'general' && <div className="sendinfo">Sending as <b style={{ fontWeight: 500 }}>{label(cat)}</b>{left(cat) !== null && ` · ${left(cat)} left this month`}</div>}
               <div className="cin2">
-                <div className="cbox">
-                  <input aria-label="Message" placeholder={`Message ${partner.display_name}`} value={text} maxLength={4000}
+                <div className="cbox2">
+                  <div style={{ position: 'relative', display: 'flex' }}>
+                    <button className="plusb" aria-label="Choose message category" aria-expanded={catMenu} onClick={() => setCatMenu(!catMenu)}><Icon n="plus" /></button>
+                    {catMenu && (
+                      <div className="catmenu" role="menu">
+                        <div className="sub" style={{ padding: '4px 10px', fontSize: 12 }}>Send as</div>
+                        {CATS.map((c) => (
+                          <button key={c} role="menuitemradio" aria-checked={cat === c} className={cat === c ? 'on' : ''} onClick={() => { setCat(c); setCatMenu(false) }}>
+                            {label(c)}{left(c) !== null && <span className="sub"> · {left(c)} left</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <input aria-label="Message" placeholder="Send a message" value={text} maxLength={4000}
                     onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()} />
-                  <button className="sendc" aria-label="Send message" disabled={!text.trim()} onClick={send}><Icon n="send" /></button>
                 </div>
+                <button className="sendbig" aria-label="Send message" disabled={!text.trim()} onClick={send}><Icon n="share" /></button>
               </div>
             </div>
           </>

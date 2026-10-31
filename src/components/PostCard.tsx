@@ -51,7 +51,7 @@ export function PostCard({ post, meId, pin, detail }: { post: Post; meId: string
       <div className="ph">
         <Link href={`/profile/${post.author_id}`}><Avatar name={post.author_name} url={post.author_avatar} /></Link>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div><Link href={`/profile/${post.author_id}`}><b>{post.author_name}</b></Link> <span className="sub">· {ago(post.created_at)}{post.is_global ? ' · Global' : ''}</span></div>
+          <div><Link href={`/profile/${post.author_id}`}><b>{post.author_name}</b></Link> <span className="sub">· {ago(post.created_at)}</span>{post.is_global && <span className="gico" title="Global Post"><Icon n="globe" /></span>}</div>
           <div className="sub" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{post.author_headline}</div>
         </div>
         {pin && <span className="pinic" title="Global Post"><Icon n="pin" /></span>}
@@ -82,7 +82,7 @@ export function PostCard({ post, meId, pin, detail }: { post: Post; meId: string
       )}
       {sheet === 'comments' && <CommentsSheet target={{ kind: 'post', id: post.id }} meId={meId} onClose={() => setSheet(null)} onAdd={() => setCounts((c) => ({ ...c, c: c.c + 1 }))} />}
       {sheet === 'more' && (
-        <Modal title="Post options" onClose={() => setSheet(null)}>
+        <Modal title="Post options" bare onClose={() => setSheet(null)}>
           <div className="mb">
             <button className="row" onClick={() => { navigator.clipboard?.writeText(`${location.origin}/post/${post.id}`); setSheet(null); toast('Link copied') }}>Copy link to post</button>
             <Link className="row" href={`/profile/${post.author_id}`} onClick={() => setSheet(null)}>View profile</Link>
@@ -90,19 +90,20 @@ export function PostCard({ post, meId, pin, detail }: { post: Post; meId: string
         </Modal>
       )}
       {sheet === 'options' && (
-        <Modal title="Post options" onClose={() => setSheet(null)}>
+        <Modal title="Post options" bare onClose={() => setSheet(null)}>
           <div className="mb">
             {!post.is_global && <button className="row optrow" onClick={() => setSheet('global')}><Icon n="globe" />Make global post</button>}
-            <button className="row optrow danger" onClick={() => run('delete_post', post.is_global ? 'Saved to drafts. You can restore it from your profile.' : 'Post deleted')}><Icon n="trash" />Delete post</button>
+            <button className="row optrow" onClick={() => run('delete_post', post.is_global ? 'Saved to drafts. You can restore it from your profile.' : 'Post deleted')}><Icon n="trash" />Delete post</button>
           </div>
         </Modal>
       )}
       {sheet === 'global' && (
-        <Modal title="Make this post global" onClose={() => setSheet(null)}>
-          <div className="mb">
-            <p style={{ margin: 0 }}>This post will appear at the top of your profile and replace your current global post. It will also appear on Exclusive’s global feed.</p>
-            <div className="fr">
-              <button className="btn sec" onClick={() => setSheet(null)}>Cancel</button>
+        <Modal title="Make this post global" bare onClose={() => setSheet(null)}>
+          <div className="mb cf">
+            <h3 className="cf-title">Make this post global</h3>
+            <p className="cf-text">This post will appear at the top of your profile and replace any previous global posts. It will also appear on Exclusive’s global feed.</p>
+            <div className="cf-btns">
+              <button className="bo" onClick={() => setSheet(null)}>Cancel</button>
               <button className="btn" onClick={() => run('make_global', 'Now your Global Post')}>Go global</button>
             </div>
           </div>

@@ -38,13 +38,14 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
     extra = { events: ev ?? [] }
   }
   if (mine) {
-    const [{ data: priv }, { data: drafts }, { data: limits }, { data: events }] = await Promise.all([
+    const [{ data: priv }, { data: drafts }, { data: limits }, { data: events }, { data: rc }] = await Promise.all([
       sb.from('profile_private').select('rating').eq('id', uid).single(),
       sb.from('posts').select('id,body,disabled_at').eq('author_id', uid).eq('is_global', true).eq('is_disabled', true).order('disabled_at', { ascending: false }),
       sb.rpc('my_limits'),
       sb.from('events').select('id,mentor_id,event_date,event_time,venue,purpose').order('event_date', { ascending: false }).limit(30),
+      sb.rpc('my_rating_counts'),
     ])
-    extra = { rating: priv?.rating ?? 0, drafts: drafts ?? [], limits, events: events ?? [], circle: conns ?? [] }
+    extra = { ratingCounts: { up: Number((rc as any)?.up ?? 0), down: Number((rc as any)?.down ?? 0) }, rating: priv?.rating ?? 0, drafts: drafts ?? [], limits, events: events ?? [], circle: conns ?? [] }
   }
 
   return (

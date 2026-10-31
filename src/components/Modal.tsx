@@ -2,7 +2,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Icon } from './Icon'
 
-export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+export function Modal({ title, onClose, children, bare }: { title: string; onClose: () => void; children: ReactNode; bare?: boolean }) {
   useEffect(() => {
     const h = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', h)
@@ -11,10 +11,12 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
   return (
     <div className="ov" onClick={onClose}>
       <div className="modal" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
-        <header>
-          <span>{title}</span>
-          <button onClick={onClose} aria-label="Close"><Icon n="x" /></button>
-        </header>
+        {!bare && (
+          <header>
+            <span>{title}</span>
+            <button onClick={onClose} aria-label="Close"><Icon n="x" /></button>
+          </header>
+        )}
         {children}
       </div>
     </div>

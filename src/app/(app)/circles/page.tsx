@@ -37,7 +37,7 @@ export default function Circles() {
     setSheet(null)
     if (error) return toastErr(errMsg(error))
     toast(accept ? `Accepted. ${r.requester.display_name} is now your mentee ${durationLabel(dur)}.` : 'Request rejected')
-    if (accept) setBanner(`${r.requester.display_name} is now your mentee`)
+    if (accept) setBanner(r.requester.display_name)
     load(); router.refresh()
   }
   async function cancel(r: any) {
@@ -48,7 +48,7 @@ export default function Circles() {
 
   return (
     <>
-      <div className="tabs">
+      <div className="tabs eq">
         {(['requests', 'updates'] as const).map((t) => (
           <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>{t[0].toUpperCase() + t.slice(1)}</button>
         ))}
@@ -59,9 +59,9 @@ export default function Circles() {
             <button className={'pill' + (sub === 'received' ? ' on' : '')} onClick={() => setSub('received')}>Received {rec.length > 0 && `(${rec.length})`}</button>
             <button className={'pill' + (sub === 'sent' ? ' on' : '')} onClick={() => setSub('sent')}>Sent</button>
           </div>
-          {banner && <div className="banner" role="status"><span>{banner}</span><button aria-label="Dismiss" onClick={() => setBanner('')}>✕</button></div>}
+          {banner && <div className="banner" role="status"><span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Avatar name={banner} size={22} />{banner} is now in your circle.</span><button aria-label="Dismiss" onClick={() => setBanner('')}>✕</button></div>}
           {sub === 'received' && rec.map((r) => (
-            <div key={r.id} className="row" style={{ padding: '10px 20px' }}>
+            <div key={r.id} className="row rq">
               <Avatar name={r.requester.display_name} url={r.requester.avatar_url} size={44} />
               <div className="grow"><div>{r.requester.display_name}</div><div className="sub">{r.requester.headline}</div></div>
               {r.goal && <button className="rb" aria-label="Read note" onClick={() => setSheet({ kind: 'goal', r })}><Icon n="mail" /></button>}
@@ -71,10 +71,10 @@ export default function Circles() {
           ))}
           {sub === 'received' && rec.length === 0 && <div className="empty">No requests received.</div>}
           {sub === 'sent' && sent.map((r) => (
-            <div key={r.id} className="row" style={{ padding: '10px 20px' }}>
+            <div key={r.id} className="row rq">
               <Avatar name={r.mentor.display_name} url={r.mentor.avatar_url} size={44} />
               <div className="grow"><div>{r.mentor.display_name}</div><div className="sub">{r.mentor.headline}</div></div>
-              <button className="lk" onClick={() => cancel(r)}>Cancel</button>
+              <button className="cancelb" onClick={() => cancel(r)}>Cancel</button>
             </div>
           ))}
           {sub === 'sent' && sent.length === 0 && <div className="empty">No requests sent. Find a mentor from Search.</div>}
