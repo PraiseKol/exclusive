@@ -2,11 +2,11 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { prepareImage, uploadOptions, MAX_INPUT_BYTES } from '@/lib/image'
 import { errMsg } from '@/lib/util'
 import { Icon } from './Icon'
 import { toast, toastErr } from './Modal'
 
-const MAX_IMG = 5 * 1024 * 1024
 const MAX_FILES = 4
 
 export function PostModal({ me, tier, onClose }: { me: string; tier: number; onClose: () => void }) {
@@ -34,7 +34,7 @@ export function PostModal({ me, tier, onClose }: { me: string; tier: number; onC
     if (!list) return
     const add: File[] = []
     for (const f of Array.from(list)) {
-      if (f.size > MAX_IMG) { toastErr(`“${f.name}” is over 5 MB`); continue }
+      if (f.size > MAX_INPUT_BYTES) { toastErr(`“${f.name}” is over 25 MB`); continue }
       add.push(f)
     }
     const next = [...files, ...add].slice(0, MAX_FILES)
@@ -49,19 +49,26 @@ export function PostModal({ me, tier, onClose }: { me: string; tier: number; onC
     try {
       const sb = createClient()
       const images: string[] = []
-      for (const file of files) {
-        const ext = file.name.split('.').pop() || 'jpg'
-        const path = `${me}/${crypto.randomUUID()}.${ext}`
-        const up = await sb.storage.from('post-images').upload(path, file, { contentType: file.type })
-        if (up.error) throw up.error
-        images.push(sb.storage.from('post-images').getPublicUrl(path).data.publicUrl)
+      let postId = ''
+      try {
+        for (const file of files) {
+          const { blob, ext } = await prepareImage(file, 'post')
+          const path = `${me}/${crypto.randomUUID()}.${ext}`
+          const up = await sb.storage.from('post-images').upload(path, blob, uploadOptions(blob))
+          if (up.error) throw up.error
+          images.push(path)
+        }
+        const ins = await sb.from('posts')
+          .insert({ author_id: me, body: body.trim(), image_url: images[0] ?? null, images, scheduled_for: sched ? new Date(sched).toISOString() : null })
+          .select('id').single()
+        if (ins.error) throw ins.error
+        postId = ins.data.id
+      } catch (e) {
+        if (images.length) await sb.storage.from('post-images').remove(images) // don't leave orphaned files behind
+        throw e
       }
-      const ins = await sb.from('posts')
-        .insert({ author_id: me, body: body.trim(), image_url: images[0] ?? null, images, scheduled_for: sched ? new Date(sched).toISOString() : null })
-        .select('id').single()
-      if (ins.error) throw ins.error
       if (global) {
-        const g = await sb.rpc('make_global', { p_post: ins.data.id })
+        const g = await sb.rpc('make_global', { p_post: postId })
         if (g.error) toastErr(errMsg(g.error) + ' Your post was published as a regular post.')
         else toast('Upload complete. Now your Global Post')
       } else toast(sched ? 'Post scheduled' : 'Upload complete')

@@ -7,7 +7,10 @@ import { Avatar } from './Avatar'
 import { CommentsSheet } from './CommentThread'
 import { Icon } from './Icon'
 import { toastErr } from './Modal'
+import { Icon } from './Icon'
+import { Modal, toast } from './Modal'
 import { QuotedPost, ReflectModal } from './ReflectModal'
+import { BlockModal, ReportModal } from './ReportModal'
 
 export type ReflectionRow = {
   id: string; reflector_id: string; reflector_name: string; reflector_avatar: string | null; reflector_headline: string
@@ -20,6 +23,7 @@ export type ReflectionRow = {
 export function ReflectionCard({ row, meId }: { row: ReflectionRow; meId: string }) {
   const sb = createClient()
   const [edit, setEdit] = useState(false)
+  const [menu, setMenu] = useState<null | 'more' | 'report' | 'block'>(null)
   const [sheet, setSheet] = useState(false)
   const [liked, setLiked] = useState(!!row.liked_by_me)
   const [likes, setLikes] = useState(row.like_count ?? 0)
@@ -47,7 +51,9 @@ export function ReflectionCard({ row, meId }: { row: ReflectionRow; meId: string
           <div><Link href={`/profile/${row.reflector_id}`}><b>{row.reflector_name}</b></Link> <span className="sub">· {ago(row.created_at)} · Reflection</span></div>
           <div className="sub" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.reflector_headline}</div>
         </div>
-        {mine && <button className="lk" onClick={() => setEdit(true)}>Edit</button>}
+        {mine
+          ? <button className="lk" onClick={() => setEdit(true)}>Edit</button>
+          : <button aria-label="Reflection options" className="dots" onClick={() => setMenu('more')}><span className="dh">⋯</span><span className="dv">⋮</span></button>}
       </div>
       <p className="pt">{row.body}</p>
       <QuotedPost q={quote} />
@@ -55,6 +61,16 @@ export function ReflectionCard({ row, meId }: { row: ReflectionRow; meId: string
         <button className={'lkb' + (liked ? ' on' : '')} onClick={like} aria-pressed={liked} aria-label="Like reflection"><Icon n="heart" />{likes}</button>
         <button onClick={() => setSheet(true)} aria-label="Comments on reflection"><Icon n="chat" />{comments}</button>
       </div>
+      {menu === 'more' && (
+        <Modal title="Reflection options" bare onClose={() => setMenu(null)}>
+          <div className="mb">
+            <button className="row optrow" onClick={() => setMenu('report')}><Icon n="flag" />Report reflection</button>
+            <button className="row optrow" onClick={() => setMenu('block')}><Icon n="ban" />Block {row.reflector_name}</button>
+          </div>
+        </Modal>
+      )}
+      {menu === 'report' && <ReportModal target={{ type: 'reflection', id: row.id }} onClose={() => setMenu(null)} />}
+      {menu === 'block' && <BlockModal user={{ id: row.reflector_id, name: row.reflector_name }} onClose={() => setMenu(null)} />}
       {edit && <ReflectModal post={quote} meId={meId} onClose={() => setEdit(false)} />}
       {sheet && <CommentsSheet target={{ kind: 'reflection', id: row.id }} meId={meId} onClose={() => setSheet(false)} onAdd={() => setComments((n) => n + 1)} />}
     </article>

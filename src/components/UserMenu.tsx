@@ -21,7 +21,7 @@ export function UserMenu({ me, email, onLogout }: { me: Me; email: string; onLog
     <div ref={ref} style={{ position: 'relative' }}>
       {open && (
         <div className="umenu" role="menu">
-          {LINKS.map(([href, label]) => <Link key={href} href={href} role="menuitem" onClick={() => setOpen(false)}>{label}</Link>)}
+          {(me.is_admin ? [...LINKS, ['/admin', 'Admin: reports']] : LINKS).map(([href, label]) => <Link key={href} href={href} role="menuitem" onClick={() => setOpen(false)}>{label}</Link>)}
           <div style={{ padding: '6px 10px' }}><ThemeToggle /></div>
           <button role="menuitem" onClick={onLogout} className="lk" style={{ textAlign: 'left', padding: '8px 10px' }}>Log out</button>
         </div>

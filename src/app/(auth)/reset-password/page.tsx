@@ -2,7 +2,9 @@
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useState } from 'react'
+import { Captcha, captchaEnabled } from '@/components/Captcha'
 import { createClient } from '@/lib/supabase/client'
+import { passwordIssue } from '@/lib/password'
 
 function ResetForm() {
   const router = useRouter()
@@ -14,7 +16,9 @@ function ResetForm() {
   const [err, setErr] = useState('')
   const [info, setInfo] = useState('')
   const [busy, setBusy] = useState(false)
-  const ok = code.length >= 6 && pw.length >= 8 && pw === pw2
+  const [needCap, setNeedCap] = useState(false)
+  const weak = pw ? passwordIssue(pw) : null
+  const ok = code.length >= 6 && !passwordIssue(pw) && pw === pw2
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -26,9 +30,10 @@ function ResetForm() {
     if (u.error) { setBusy(false); return setErr(u.error.message) }
     router.replace('/home'); router.refresh()
   }
-  async function resend() {
+  async function resend(token?: string) {
     setErr(''); setInfo('')
-    const { error } = await createClient().auth.resetPasswordForEmail(email)
+    if (captchaEnabled && !token) { setNeedCap(true); return }
+    const { error } = await createClient().auth.resetPasswordForEmail(email, { captchaToken: token })
     if (error) setErr(error.message); else setInfo('A new code has been sent.')
   }
 
@@ -42,7 +47,7 @@ function ResetForm() {
         <label className="lab">Code
           <input className="t" inputMode="numeric" autoComplete="one-time-code" maxLength={8} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} style={{ letterSpacing: '.3em', fontSize: 18 }} />
         </label>
-        <label className="lab">New password (8+ characters)
+        <label className="lab">New password (8+ characters, letters and numbers)
           <span style={{ position: 'relative', display: 'block' }}>
             <input className="t" type={show ? 'text' : 'password'} autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} />
             <button type="button" onClick={() => setShow(!show)} style={{ position: 'absolute', right: 12, top: 18, fontSize: 12 }}>{show ? 'Hide' : 'Show'}</button>
@@ -51,10 +56,12 @@ function ResetForm() {
         <label className="lab">Confirm new password
           <input className="t" type={show ? 'text' : 'password'} autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} />
         </label>
+        {weak && <div className="err" role="alert">{weak}</div>}
         {pw2 && pw !== pw2 && <div className="err" role="alert">Passwords don’t match.</div>}
         {err && <div className="err" role="alert">{err}</div>}
         {info && <div className="sub" role="status">{info}</div>}
-        <button type="button" className="lk" style={{ alignSelf: 'flex-start' }} onClick={resend}>Resend code</button>
+        <button type="button" className="lk" style={{ alignSelf: 'flex-start' }} onClick={() => resend()}>Resend code</button>
+        {needCap && <Captcha onToken={(t) => { if (t) { setNeedCap(false); resend(t) } }} />}
         <div className="spacer" />
         <button className="btn" disabled={!ok || busy}>{busy ? 'Saving…' : 'Reset password'}</button>
       </form>

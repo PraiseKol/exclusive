@@ -21,10 +21,10 @@ const ROOTS = ['/home', '/search', '/global', '/circles', '/messages', '/notific
 const TITLES: Record<string, string> = { '/noted': 'Noted', '/premium': 'Premium', '/help': 'Help Center', '/settings': 'Settings' }
 const isDesktop = () => window.matchMedia('(min-width: 761px)').matches
 
-export type Me = { id: string; display_name: string; avatar_url: string | null; premium_tier: number; username: string | null; grade: string }
+export type Me = { id: string; display_name: string; avatar_url: string | null; premium_tier: number; username: string | null; grade: string; is_admin?: boolean }
 
-export function AppShell({ me, email, unread, pendingReq, counts, rail, children }: {
-  me: Me; email: string; unread: number; pendingReq: number; counts: { up: number; down: number }; rail: ReactNode; children: ReactNode
+export function AppShell({ me, email, unread, pendingReq, counts, rail, children, suspended }: {
+  me: Me; suspended?: boolean; email: string; unread: number; pendingReq: number; counts: { up: number; down: number }; rail: ReactNode; children: ReactNode
 }) {
   const path = usePathname()
   const router = useRouter()
@@ -95,6 +95,7 @@ export function AppShell({ me, email, unread, pendingReq, counts, rail, children
             </Link>
           )}
         </div>
+        {suspended && <div className="susp" role="alert">Your account is suspended. You can read content, but you can’t post, comment or message. If you think this is a mistake, please contact support.</div>}
         {children}
       </main>
       <aside>{rail}</aside>

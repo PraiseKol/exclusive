@@ -48,6 +48,7 @@ export function Drawer({ me, counts, onClose, onLogout }: { me: Me; counts: { up
           {ITEMS.map(([href, label, icon]) => (
             <Link key={label} href={href} onClick={onClose} className="drw-item"><Icon n={icon} />{label}</Link>
           ))}
+          {me.is_admin && <Link href="/admin" onClick={onClose} className="drw-item"><Icon n="flag" />Admin: reports</Link>}
         </nav>
         <div className="spacer" />
         <div className="drw-item" style={{ justifyContent: 'space-between', borderTop: '.5px solid var(--n200)', paddingTop: 16 }}>

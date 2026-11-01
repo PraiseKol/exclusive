@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+const OPEN = ['/terms', '/privacy', '/data-protection'] // readable by everyone, signed in or not
 const PUBLIC = ['/welcome', '/login', '/signup', '/verify', '/forgot-password', '/reset-password']
 
 export async function updateSession(request: NextRequest) {
@@ -22,6 +23,7 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getUser()
   const path = request.nextUrl.pathname
   const isPublic = PUBLIC.some((p) => path === p)
+  if (OPEN.includes(path)) return response
 
   if (!data.user && !isPublic) {
     const url = request.nextUrl.clone()

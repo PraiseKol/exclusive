@@ -27,3 +27,14 @@ Import the repo into Vercel and set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_
 
 ## Optional settings
 - `NEXT_PUBLIC_ONBOARDING_VIDEO_URL`: URL of the onboarding explainer video (mp4). If unset, the video step shows a placeholder and Continue.
+
+## Launch checklist (safety, privacy, abuse protection)
+1. **Legal details:** edit `src/lib/legal.ts` (company name, address, contact and privacy emails, governing law). The Terms, Privacy Policy and Data Protection pages are a draft; have a qualified lawyer review them (Nigeria NDPA 2023, and GDPR if you serve EU users).
+2. **Account deletion:** add `SUPABASE_SERVICE_ROLE_KEY` (Supabase → Project Settings → API Keys) to `.env.local` and to Vercel. Server-only; never expose it in the browser.
+3. **Captcha:** create a free Cloudflare Turnstile widget, set `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, then in Supabase go to Authentication → Attack Protection → enable CAPTCHA (Turnstile) and paste the secret key.
+4. **Leaked-password check:** Supabase → Authentication → Sign In / Providers → Email → "Prevent use of leaked passwords" (may require the Pro plan).
+5. **Auth rate limits:** review Supabase → Authentication → Rate Limits.
+6. **Admins:** the first admin is set in the database. To add another: `insert into public.account_flags (id, is_admin) select id, true from auth.users where email = 'person@example.com' on conflict (id) do update set is_admin = true;` The admin page is at `/admin`.
+
+## Images
+Photos are resized in the browser before upload (profile photos: 320 px square WebP; post photos: max 1280 px WebP at about 80% quality), which also removes hidden location/camera data. Files are cached for a year. Old files are deleted when a profile photo is replaced or a normal post is deleted. Post photos live in a **private** bucket and are shown through expiring links that are only issued for posts the viewer is allowed to see.

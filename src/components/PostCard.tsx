@@ -10,6 +10,7 @@ import { CommentsSheet } from './CommentThread'
 import { ImageGrid } from './ImageGrid'
 import { Modal, toast, toastErr } from './Modal'
 import { ReflectModal } from './ReflectModal'
+import { BlockModal, ReportModal } from './ReportModal'
 
 export type Post = {
   id: string; author_id: string; body: string; image_url: string | null; is_global: boolean; created_at: string
@@ -23,7 +24,7 @@ export function PostCard({ post, meId, pin, detail }: { post: Post; meId: string
   const sb = createClient()
   const [s, setS] = useState({ l: post.liked_by_me, r: post.reflected_by_me, n: post.noted_by_me })
   const [counts, setCounts] = useState({ l: post.like_count, r: post.reflection_count, c: post.comment_count })
-  const [sheet, setSheet] = useState<null | 'comments' | 'options' | 'global' | 'more' | 'reflect'>(null)
+  const [sheet, setSheet] = useState<null | 'comments' | 'options' | 'global' | 'more' | 'reflect' | 'report' | 'block'>(null)
   const mine = post.author_id === meId
 
   async function toggle(table: 'post_likes' | 'reflections' | 'noted', key: 'l' | 'r' | 'n', ck?: 'l' | 'r') {
@@ -43,6 +44,11 @@ export function PostCard({ post, meId, pin, detail }: { post: Post; meId: string
     const { error } = await sb.rpc(fn, { p_post: post.id })
     setSheet(null)
     if (error) return toastErr(errMsg(error))
+    if (fn === 'delete_post' && !post.is_global) {
+      // a normal post is deleted for good, so free its photos too (Global Posts are kept as restorable drafts)
+      const paths = (post.images?.length ? post.images : post.image_url ? [post.image_url] : []).filter((p) => !/^https?:/.test(p))
+      if (paths.length) await sb.storage.from('post-images').remove(paths)
+    }
     toast(ok); router.refresh()
   }
 
@@ -73,7 +79,7 @@ export function PostCard({ post, meId, pin, detail }: { post: Post; meId: string
 
       {sheet === 'reflect' && (
         <ReflectModal
-          post={{ id: post.id, body: post.body, image_url: post.image_url, created_at: post.created_at, author_id: post.author_id, author_name: post.author_name, author_avatar: post.author_avatar }}
+          post={{ id: post.id, body: post.body, image_url: post.image_url, images: post.images, created_at: post.created_at, author_id: post.author_id, author_name: post.author_name, author_avatar: post.author_avatar }}
           meId={meId} onClose={() => setSheet(null)}
           onChange={(k) => {
             if (k === 'added') { setS((x) => ({ ...x, r: true })); setCounts((c) => ({ ...c, r: c.r + 1 })) }
@@ -85,10 +91,14 @@ export function PostCard({ post, meId, pin, detail }: { post: Post; meId: string
         <Modal title="Post options" bare onClose={() => setSheet(null)}>
           <div className="mb">
             <button className="row" onClick={() => { navigator.clipboard?.writeText(`${location.origin}/post/${post.id}`); setSheet(null); toast('Link copied') }}>Copy link to post</button>
-            <Link className="row" href={`/profile/${post.author_id}`} onClick={() => setSheet(null)}>View profile</Link>
+            <Link className="row optrow" href={`/profile/${post.author_id}`} onClick={() => setSheet(null)}><Icon n="user" />View profile</Link>
+            <button className="row optrow" onClick={() => setSheet('report')}><Icon n="flag" />Report post</button>
+            <button className="row optrow" onClick={() => setSheet('block')}><Icon n="ban" />Block {post.author_name}</button>
           </div>
         </Modal>
       )}
+      {sheet === 'report' && <ReportModal target={{ type: 'post', id: post.id }} onClose={() => setSheet(null)} />}
+      {sheet === 'block' && <BlockModal user={{ id: post.author_id, name: post.author_name }} onClose={() => setSheet(null)} />}
       {sheet === 'options' && (
         <Modal title="Post options" bare onClose={() => setSheet(null)}>
           <div className="mb">

@@ -1,6 +1,7 @@
 'use client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useState } from 'react'
+import { Captcha, captchaEnabled } from '@/components/Captcha'
 import { createClient } from '@/lib/supabase/client'
 
 function VerifyForm() {
@@ -10,6 +11,7 @@ function VerifyForm() {
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const [sent, setSent] = useState(false)
+  const [needCap, setNeedCap] = useState(false)
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -19,8 +21,9 @@ function VerifyForm() {
     if (error) return setErr(error.message)
     router.replace('/about'); router.refresh()
   }
-  async function resend() {
-    const { error } = await createClient().auth.resend({ type: 'signup', email })
+  async function resend(token?: string) {
+    if (captchaEnabled && !token) { setNeedCap(true); return }
+    const { error } = await createClient().auth.resend({ type: 'signup', email, options: { captchaToken: token } })
     if (error) setErr(error.message); else setSent(true)
   }
 
@@ -35,7 +38,8 @@ function VerifyForm() {
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} style={{ letterSpacing: '.4em', fontSize: 20 }} />
         </label>
         {err && <div className="err" role="alert">{err}</div>}
-        <button type="button" className="lk" style={{ alignSelf: 'flex-start' }} onClick={resend}>{sent ? 'Code sent again' : 'Resend code'}</button>
+        <button type="button" className="lk" style={{ alignSelf: 'flex-start' }} onClick={() => resend()}>{sent ? 'Code sent again' : 'Resend code'}</button>
+        {needCap && <Captcha onToken={(t) => { if (t) { setNeedCap(false); resend(t) } }} />}
         <div className="spacer" />
         <button className="btn" disabled={code.length < 6 || busy}>{busy ? 'Verifying…' : 'Verify'}</button>
       </form>

@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { Captcha, captchaEnabled } from '@/components/Captcha'
 import { createClient } from '@/lib/supabase/client'
 
 export default function ForgotPassword() {
@@ -9,14 +10,16 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState('')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+  const [token, setToken] = useState<string | null>(null)
+  const [ck, setCk] = useState(0)
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setBusy(true); setErr('')
     const clean = email.trim()
-    const { error } = await createClient().auth.resetPasswordForEmail(clean)
+    const { error } = await createClient().auth.resetPasswordForEmail(clean, { captchaToken: token ?? undefined })
     setBusy(false)
-    if (error) return setErr(error.message)
+    if (error) { if (captchaEnabled) { setToken(null); setCk((c) => c + 1) } return setErr(error.message) }
     router.push('/reset-password?email=' + encodeURIComponent(clean))
   }
 
@@ -28,9 +31,10 @@ export default function ForgotPassword() {
         <h1>Forgot password?</h1>
         <p className="sub" style={{ margin: 0 }}>Enter your email and we’ll send you a code to reset your password.</p>
         <label className="lab">Email address<input className="t" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} /></label>
+        <Captcha onToken={setToken} resetKey={ck} />
         {err && <div className="err" role="alert">{err}</div>}
         <div className="spacer" />
-        <button className="btn" disabled={!/\S+@\S+/.test(email) || busy}>{busy ? 'Sending…' : 'Send code'}</button>
+        <button className="btn" disabled={!/\S+@\S+/.test(email) || busy || (captchaEnabled && !token)}>{busy ? 'Sending…' : 'Send code'}</button>
         <p className="sub" style={{ textAlign: 'center', margin: 0 }}>Remembered it? <Link className="lk" href="/login">Log in</Link></p>
       </form>
     </div>

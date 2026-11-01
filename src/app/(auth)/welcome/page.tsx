@@ -37,7 +37,7 @@ export default function Welcome() {
         <div className="spacer" />
         <Link className="btn" href="/signup">Get Started</Link>
         <Link className="bo" href="/login">Log In</Link>
-        <p className="sub" style={{ textAlign: 'center', margin: 0, fontSize: 12 }}>By continuing, you agree with Exclusive’s Terms of Use</p>
+        <p className="sub" style={{ textAlign: 'center', margin: 0, fontSize: 12 }}>By continuing, you agree with Exclusive’s <Link href="/terms" style={{ textDecoration: 'underline' }}>Terms of Use</Link> and <Link href="/privacy" style={{ textDecoration: 'underline' }}>Privacy Policy</Link></p>
       </div>
     </div>
   )

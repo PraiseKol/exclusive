@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { Captcha, captchaEnabled } from '@/components/Captcha'
 import { createClient } from '@/lib/supabase/client'
 
 export default function Login() {
@@ -11,14 +12,16 @@ export default function Login() {
   const [show, setShow] = useState(false)
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
-  const ok = /\S+@\S+/.test(email) && pw.length >= 6
+  const [token, setToken] = useState<string | null>(null)
+  const [ck, setCk] = useState(0)
+  const ok = /\S+@\S+/.test(email) && pw.length >= 6 && (!captchaEnabled || !!token)
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     setBusy(true); setErr('')
-    const { error } = await createClient().auth.signInWithPassword({ email, password: pw })
+    const { error } = await createClient().auth.signInWithPassword({ email, password: pw, options: { captchaToken: token ?? undefined } })
     setBusy(false)
-    if (error) return setErr(error.message)
+    if (error) { if (captchaEnabled) { setToken(null); setCk((c) => c + 1) } return setErr(error.message) }
     router.replace('/home'); router.refresh()
   }
 
@@ -37,6 +40,7 @@ export default function Login() {
           </span>
         </label>
         <Link className="lk" href="/forgot-password" style={{ alignSelf: 'flex-end' }}>Forgot password?</Link>
+        <Captcha onToken={setToken} resetKey={ck} />
         {err && <div className="err" role="alert">{err}</div>}
         <div className="spacer" />
         <button className="btn" disabled={!ok || busy}>{busy ? 'Logging in…' : 'Log In'}</button>

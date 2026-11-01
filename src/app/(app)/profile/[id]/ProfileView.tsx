@@ -6,9 +6,11 @@ import { Avatar } from '@/components/Avatar'
 import { Icon } from '@/components/Icon'
 import { Modal, toast, toastErr } from '@/components/Modal'
 import { RequestModal } from '@/components/RequestModal'
+import { BlockModal, ReportModal } from '@/components/ReportModal'
 import { PostCard, type Post } from '@/components/PostCard'
 import { ReflectionCard, type ReflectionRow } from '@/components/ReflectionCard'
 import { createClient } from '@/lib/supabase/client'
+import { prepareImage, uploadOptions, pathFromPublicUrl } from '@/lib/image'
 import { GRADES, errMsg } from '@/lib/util'
 
 type Tab = 'posts' | 'reflections' | 'circle' | 'events'
@@ -23,7 +25,7 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
   const startTab = (tabs as string[]).includes(initialTab ?? '') ? (initialTab as Tab) : 'posts'
   const [tab, setTab] = useState<Tab>(startTab)
   useEffect(() => setTab(startTab), [startTab]) // eslint-disable-line react-hooks/exhaustive-deps
-  const [sheet, setSheet] = useState<null | 'request' | 'limits' | 'edit' | 'grade' | 'end'>(mine && initialEdit ? 'edit' : null)
+  const [sheet, setSheet] = useState<null | 'request' | 'limits' | 'edit' | 'grade' | 'end' | 'more' | 'report' | 'block'>(mine && initialEdit ? 'edit' : null)
   const [pid, setPid] = useState<string | null>(pendingId)
   const tier = profile.premium_tier as number
 
@@ -77,6 +79,7 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
                 <button className={'rate' + (vote === -1 ? ' on' : '')} aria-label="Thumbs down" aria-pressed={vote === -1} onClick={() => rate(-1)}><Icon n="down" /></button>
               </>
             )}
+            {!mine && <button className="rate" aria-label="More options" onClick={() => setSheet('more')}>⋯</button>}
             <span style={{ flex: 1 }} />
             <button className="infob" aria-label="How grades work" onClick={() => setSheet('grade')}><Icon n="info" /></button>
           </div>
@@ -133,6 +136,7 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
                 {pid && !connected
                   ? <button className="bo" style={{ padding: '10px 14px', borderRadius: 8 }} onClick={cancelRequest}>Cancel request</button>
                   : <button className="btn" disabled={connected} onClick={() => setSheet('request')}>{connected ? 'In your circle' : 'Mentor me'}</button>}
+                <button className="rate dskonly" aria-label="More options" onClick={() => setSheet('more')}>⋯</button>
               </>
             )}
           </div>
@@ -185,6 +189,17 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
           </div>
         </Modal>
       )}
+      {sheet === 'more' && (
+        <Modal title="Profile options" bare onClose={() => setSheet(null)}>
+          <div className="mb">
+            <button className="row optrow" onClick={() => { navigator.clipboard?.writeText(`${location.origin}/profile/${profile.id}`); setSheet(null); toast('Profile link copied') }}><Icon n="share" />Copy profile link</button>
+            <button className="row optrow" onClick={() => setSheet('report')}><Icon n="flag" />Report {profile.display_name}</button>
+            <button className="row optrow" onClick={() => setSheet('block')}><Icon n="ban" />Block {profile.display_name}</button>
+          </div>
+        </Modal>
+      )}
+      {sheet === 'report' && <ReportModal target={{ type: 'user', id: profile.id }} onClose={() => setSheet(null)} />}
+      {sheet === 'block' && <BlockModal user={{ id: profile.id, name: profile.display_name }} onClose={() => setSheet(null)} />}
       {sheet === 'limits' && (
         <Modal title="Connection Limits" onClose={() => setSheet(null)}>
           <div className="mb">
@@ -224,18 +239,24 @@ function EditModal({ profile, onClose }: { profile: any; onClose: () => void }) 
 
   async function save() {
     if (!f.first_name.trim() || !f.last_name.trim()) return toastErr('Please enter your first and last name')
-    if (file && file.size > 10 * 1024 * 1024) return toastErr('Profile photo must be 10 MB or smaller')
     setBusy(true)
     try {
       let avatar_url = profile.avatar_url
+      let newPath: string | null = null
       if (file) {
-        const path = `${profile.id}/avatar-${Date.now()}.${file.name.split('.').pop() || 'jpg'}`
-        const up = await sb.storage.from('avatars').upload(path, file, { contentType: file.type })
+        const { blob, ext } = await prepareImage(file, 'avatar') // 320 px square WebP, metadata removed
+        newPath = `${profile.id}/avatar-${Date.now()}.${ext}`
+        const up = await sb.storage.from('avatars').upload(newPath, blob, uploadOptions(blob))
         if (up.error) throw up.error
-        avatar_url = sb.storage.from('avatars').getPublicUrl(path).data.publicUrl
+        avatar_url = sb.storage.from('avatars').getPublicUrl(newPath).data.publicUrl
       }
       const { error } = await sb.from('profiles').update({ ...f, first_name: f.first_name.trim(), last_name: f.last_name.trim(), avatar_url }).eq('id', profile.id)
-      if (error) throw error
+      if (error) {
+        if (newPath) await sb.storage.from('avatars').remove([newPath])
+        throw error
+      }
+      const oldPath = newPath ? pathFromPublicUrl(profile.avatar_url, 'avatars') : null
+      if (oldPath && oldPath !== newPath) await sb.storage.from('avatars').remove([oldPath]) // free the old photo's space
       toast('Profile updated'); onClose(); router.refresh()
     } catch (e) { toastErr(errMsg(e)); setBusy(false) }
   }
@@ -248,7 +269,7 @@ function EditModal({ profile, onClose }: { profile: any; onClose: () => void }) 
         </div>
         <label className="lab">Headline<input className="t" value={f.headline} maxLength={160} onChange={(e) => setF({ ...f, headline: e.target.value })} /></label>
         <label className="lab">Bio<textarea value={f.bio} maxLength={500} onChange={(e) => setF({ ...f, bio: e.target.value })} /></label>
-        <label className="lab">Profile photo (up to 10 MB)<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
+        <label className="lab">Profile photo (any size; we shrink it for you)<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
         <label style={{ display: 'flex', gap: 10, alignItems: 'center' }}><input type="checkbox" checked={f.available} onChange={(e) => setF({ ...f, available: e.target.checked })} /> Available for mentoring</label>
         <div className="fr"><button className="btn sec" onClick={onClose}>Cancel</button><button className="btn" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save'}</button></div>
       </div>

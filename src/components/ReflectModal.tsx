@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { ago, errMsg } from '@/lib/util'
+import { useSignedUrls } from '@/lib/signedUrls'
 import { Avatar } from './Avatar'
 import { Modal, toast, toastErr } from './Modal'
 
@@ -13,6 +14,8 @@ export type QuotePost = {
 }
 
 export function QuotedPost({ q }: { q: QuotePost }) {
+  const first = (q.images?.[0] || q.image_url || '') as string
+  const signed = useSignedUrls(first ? [first] : [])
   return (
     <div className="quote">
       <div className="ph" style={{ gap: 8 }}>
@@ -21,9 +24,9 @@ export function QuotedPost({ q }: { q: QuotePost }) {
         {q.created_at && <span className="sub" style={{ fontSize: 12 }}>· {ago(q.created_at)}</span>}
       </div>
       <p className="qt">{q.body}</p>
-      {(q.images?.[0] || q.image_url) && (
+      {first && signed[first] && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img className="qimg" src={(q.images?.[0] || q.image_url) as string} alt="Quoted post attachment" />
+        <img className="qimg" src={signed[first]} alt="Quoted post attachment" loading="lazy" />
       )}
     </div>
   )

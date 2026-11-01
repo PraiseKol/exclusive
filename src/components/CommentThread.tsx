@@ -5,6 +5,7 @@ import { ago, errMsg } from '@/lib/util'
 import { Avatar } from './Avatar'
 import { Icon } from './Icon'
 import { toast, toastErr } from './Modal'
+import { ReportModal } from './ReportModal'
 
 export type CommentTarget = { kind: 'post' | 'reflection'; id: string }
 const EMOJIS = ['😀', '😂', '😍', '🙏', '👏', '🔥', '💯', '🎉', '❤️', '😢', '🤔', '👍']
@@ -23,6 +24,7 @@ export function CommentThread({ target, meId, onAdd, inline }: { target: Comment
   const [sort, setSort] = useState<'relevant' | 'newest'>('relevant')
   const [menu, setMenu] = useState(false)
   const [emoji, setEmoji] = useState(false)
+  const [reporting, setReporting] = useState<string | null>(null)
   const box = useRef<HTMLTextAreaElement>(null)
 
   const load = async () => {
@@ -80,6 +82,7 @@ export function CommentThread({ target, meId, onAdd, inline }: { target: Comment
         <div className="sub" style={{ display: 'flex', gap: 16 }}>
           <button onClick={() => like(c)} aria-pressed={likes[c.id]?.me} style={{ color: likes[c.id]?.me ? '#d92d20' : undefined }}>Like{likes[c.id]?.n ? ` · ${likes[c.id].n}` : ''}</button>
           {!small && <button onClick={() => { setReply(c); box.current?.focus() }}>Reply</button>}
+          {c.author.id !== meId && <button onClick={() => setReporting(c.id)}>Report</button>}
         </div>
       </div>
     </div>
@@ -120,6 +123,7 @@ export function CommentThread({ target, meId, onAdd, inline }: { target: Comment
             : <button className="emo" aria-label="Add emoji" aria-pressed={emoji} onClick={() => setEmoji(!emoji)}><Icon n="smile" /></button>}
         </div>
       </div>
+      {reporting && <ReportModal target={{ type: 'comment', id: reporting }} onClose={() => setReporting(null)} />}
     </div>
   )
 }

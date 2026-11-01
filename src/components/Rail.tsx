@@ -37,7 +37,7 @@ export async function Rail({ meId, tier }: { meId: string; tier: number }) {
         ))}
       </div>
       </div>
-      <div className="ft">About | Help | Privacy Policy | Terms of Service<br />© 2026 Exclusive</div>
+      <div className="ft"><Link href="/help">Help</Link> | <Link href="/privacy">Privacy Policy</Link> | <Link href="/terms">Terms of Service</Link> | <Link href="/data-protection">Data protection</Link><br />© 2026 Exclusive</div>
     </>
   )
 }
