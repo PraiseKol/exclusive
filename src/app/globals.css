@@ -364,3 +364,8 @@ main:has(.msg-wrap){padding-bottom:0}
 @media(prefers-color-scheme:dark){.susp{background:#3a1512;color:#fda29b;border-color:#5c2420}}
 :root[data-theme=dark] .susp{background:#3a1512;color:#fda29b;border-color:#5c2420}
 :root[data-theme=light] .susp{background:#fef3f2;color:#b42318;border-color:#fecdca}
+
+/* endless scrolling */
+.more{display:flex;justify-content:center;align-items:center;padding:20px;min-height:56px;font-size:13px}
+.spin{width:22px;height:22px;border-radius:50%;border:2.5px solid var(--n200);border-top-color:var(--b950);animation:spin .8s linear infinite;display:inline-block}
+.thread .more{padding:6px;min-height:32px}

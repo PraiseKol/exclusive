@@ -9,6 +9,7 @@ import { Icon } from './Icon'
 import { CommentsSheet } from './CommentThread'
 import { ImageGrid } from './ImageGrid'
 import { Modal, toast, toastErr } from './Modal'
+import { removeFiles } from '@/lib/storageCleanup'
 import { ReflectModal } from './ReflectModal'
 import { BlockModal, ReportModal } from './ReportModal'
 
@@ -19,7 +20,8 @@ export type Post = {
   liked_by_me: boolean; reflected_by_me: boolean; noted_by_me: boolean
 }
 
-export function PostCard({ post, meId, pin, detail }: { post: Post; meId: string; pin?: boolean; detail?: boolean }) {
+export function PostCard({ post, meId, pin, detail, onRemoved }: { post: Post; meId: string; pin?: boolean; detail?: boolean; onRemoved?: (id: string) => void }) {
+  const from = post.is_global ? 'global' : 'home' // opens in Global Posts for global posts, Home otherwise
   const router = useRouter()
   const sb = createClient()
   const [s, setS] = useState({ l: post.liked_by_me, r: post.reflected_by_me, n: post.noted_by_me })
@@ -47,8 +49,9 @@ export function PostCard({ post, meId, pin, detail }: { post: Post; meId: string
     if (fn === 'delete_post' && !post.is_global) {
       // a normal post is deleted for good, so free its photos too (Global Posts are kept as restorable drafts)
       const paths = (post.images?.length ? post.images : post.image_url ? [post.image_url] : []).filter((p) => !/^https?:/.test(p))
-      if (paths.length) await sb.storage.from('post-images').remove(paths)
+      if (paths.length) await removeFiles(sb, 'post-images', paths)
     }
+    if (fn === 'delete_post' && !post.is_global) onRemoved?.(post.id)
     toast(ok); router.refresh()
   }
 
@@ -66,7 +69,7 @@ export function PostCard({ post, meId, pin, detail }: { post: Post; meId: string
       {(() => {
         const urls = post.images?.length ? post.images : post.image_url ? [post.image_url] : []
         const body = <><p className="pt">{post.body}</p><ImageGrid urls={urls} /></>
-        return detail ? body : <Link href={`/post/${post.id}`} className="plink" aria-label="Open post">{body}</Link>
+        return detail ? body : <Link href={`/post/${post.id}?from=${from}`} className="plink" aria-label="Open post">{body}</Link>
       })()}
       <div className="act">
         <button className={'lkb' + (s.l ? ' on' : '')} onClick={() => toggle('post_likes', 'l', 'l')} aria-pressed={s.l}><Icon n="heart" />{counts.l}</button>
@@ -74,7 +77,7 @@ export function PostCard({ post, meId, pin, detail }: { post: Post; meId: string
         <button onClick={() => setSheet('comments')} aria-label="Comments"><Icon n="chat" />{counts.c}</button>
         <span className="sp" />
         <button className={s.n ? 'on' : ''} onClick={() => toggle('noted', 'n')} title="Noted" aria-pressed={s.n}><Icon n="bm" /></button>
-        <button aria-label="Share" onClick={() => { navigator.clipboard?.writeText(`${location.origin}/post/${post.id}`); toast('Link copied') }}><Icon n="share" /></button>
+        <button aria-label="Share" onClick={() => { navigator.clipboard?.writeText(`${location.origin}/post/${post.id}?from=${from}`); toast('Link copied') }}><Icon n="share" /></button>
       </div>
 
       {sheet === 'reflect' && (
@@ -90,7 +93,7 @@ export function PostCard({ post, meId, pin, detail }: { post: Post; meId: string
       {sheet === 'more' && (
         <Modal title="Post options" bare onClose={() => setSheet(null)}>
           <div className="mb">
-            <button className="row" onClick={() => { navigator.clipboard?.writeText(`${location.origin}/post/${post.id}`); setSheet(null); toast('Link copied') }}>Copy link to post</button>
+            <button className="row" onClick={() => { navigator.clipboard?.writeText(`${location.origin}/post/${post.id}?from=${from}`); setSheet(null); toast('Link copied') }}>Copy link to post</button>
             <Link className="row optrow" href={`/profile/${post.author_id}`} onClick={() => setSheet(null)}><Icon n="user" />View profile</Link>
             <button className="row optrow" onClick={() => setSheet('report')}><Icon n="flag" />Report post</button>
             <button className="row optrow" onClick={() => setSheet('block')}><Icon n="ban" />Block {post.author_name}</button>

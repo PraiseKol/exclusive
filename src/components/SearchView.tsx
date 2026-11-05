@@ -1,9 +1,10 @@
 'use client'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Avatar } from '@/components/Avatar'
 import { RequestModal } from '@/components/RequestModal'
 import { createClient } from '@/lib/supabase/client'
+import { useSentinel } from '@/lib/useSentinel'
 import { INTERESTS } from '@/lib/util'
 
 const COLS = 'id,display_name,headline,avatar_url,username'
@@ -18,6 +19,11 @@ export function SearchView({ q, variant = 'grid', onNavigate }: { q: string; var
   const [res, setRes] = useState<P[] | null>(null)
   const [req, setReq] = useState<P | null>(null)
   const [ready, setReady] = useState(false)
+  const [more, setMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const termRef = useRef('')
+  const offsetRef = useRef(0)
+  const SIZE = 20
 
   useEffect(() => {
     (async () => {
@@ -46,17 +52,39 @@ export function SearchView({ q, variant = 'grid', onNavigate }: { q: string; var
     })()
   }, [])
 
+  const fetchPage = async (term: string, from: number) => {
+    const topics = INTERESTS.filter((i) => i.toLowerCase().includes(term.toLowerCase())).map((i) => `interests.cs.{"${i}"}`)
+    const filters = [`display_name.ilike.%${term}%`, `headline.ilike.%${term}%`, `username.ilike.%${term}%`, ...topics].join(',')
+    const { data } = await createClient().from('profiles').select(COLS).neq('display_name', '').or(filters)
+      .order('display_name').order('id').range(from, from + SIZE - 1)
+    return { rows: ((data ?? []) as P[]).filter((p) => p.id !== me), full: (data ?? []).length === SIZE }
+  }
+
   useEffect(() => {
     const term = q.trim().replace(/[%,()"]/g, '')
-    if (!term) return setRes(null)
+    termRef.current = term
+    if (!term) { setRes(null); setMore(false); return }
     const t = setTimeout(async () => {
-      const topics = INTERESTS.filter((i) => i.toLowerCase().includes(term.toLowerCase())).map((i) => `interests.cs.{"${i}"}`)
-      const filters = [`display_name.ilike.%${term}%`, `headline.ilike.%${term}%`, `username.ilike.%${term}%`, ...topics].join(',')
-      const { data } = await createClient().from('profiles').select(COLS).neq('display_name', '').or(filters).limit(40)
-      setRes(((data ?? []) as P[]).filter((p) => p.id !== me))
+      const { rows, full } = await fetchPage(term, 0)
+      if (termRef.current !== term) return
+      setRes(rows); setMore(full); offsetRef.current = SIZE
     }, 250)
     return () => clearTimeout(t)
-  }, [q, me])
+  }, [q, me]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // endless results: load the next page when the end of the list comes into view
+  const loadMoreResults = async () => {
+    const term = termRef.current
+    if (!more || loadingMore || !term) return
+    setLoadingMore(true)
+    const { rows, full } = await fetchPage(term, offsetRef.current)
+    if (termRef.current === term) {
+      setRes((prev) => [...(prev ?? []), ...rows.filter((r) => !(prev ?? []).some((p) => p.id === r.id))])
+      offsetRef.current += SIZE; setMore(full)
+    }
+    setLoadingMore(false)
+  }
+  const sentinel = useSentinel(loadMoreResults, more && res !== null, res?.length ?? 0)
 
   const Card = ({ p }: { p: P }) => {
     const connected = linked.has(p.id), sent = sentTo.has(p.id)
@@ -77,13 +105,14 @@ export function SearchView({ q, variant = 'grid', onNavigate }: { q: string; var
       <div className="sres">
         {res === null && <div className="empty" style={{ padding: 24 }}>Searching…</div>}
         {res !== null && res.length === 0 && <div className="empty" style={{ padding: 24 }}>No matches. Try another name, role or topic.</div>}
-        {(res ?? []).slice(0, 8).map((p) => (
+        {(res ?? []).map((p) => (
           <Link key={p.id} href={`/profile/${p.id}`} className="row" onClick={onNavigate}>
             <Avatar name={p.display_name} url={p.avatar_url} size={40} />
             <div className="grow"><div style={{ fontSize: 15 }}>{p.display_name}</div><div className="sub">{p.headline || (p.username ? '@' + p.username : '')}</div></div>
             <span className="lk">View profile</span>
           </Link>
         ))}
+        {more && <div ref={sentinel} className="more">{loadingMore && <span className="spin" aria-label="Loading more" />}</div>}
       </div>
     )
   }
@@ -95,6 +124,7 @@ export function SearchView({ q, variant = 'grid', onNavigate }: { q: string; var
           <>
             <div className="grid" style={{ marginTop: 16 }}>{res.map((p) => <Card key={p.id} p={p} />)}</div>
             {res.length === 0 && <div className="empty">No matches. Try another name, role or topic.</div>}
+            {more && <div ref={sentinel} className="more">{loadingMore && <span className="spin" aria-label="Loading more" />}</div>}
           </>
         ) : (
           <>

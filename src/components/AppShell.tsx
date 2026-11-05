@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Avatar } from './Avatar'
@@ -27,6 +27,9 @@ export function AppShell({ me, email, unread, pendingReq, counts, rail, children
   me: Me; suspended?: boolean; email: string; unread: number; pendingReq: number; counts: { up: number; down: number }; rail: ReactNode; children: ReactNode
 }) {
   const path = usePathname()
+  const from = useSearchParams().get('from')
+  // a post or reflection opens inside the feed it came from: Global Posts for global content, Home otherwise
+  const ctx = path.startsWith('/post/') || path.startsWith('/reflection/') ? (from === 'global' ? '/global' : '/home') : null
   const router = useRouter()
   const [composer, setComposer] = useState(false)
   const [drawer, setDrawer] = useState(false)
@@ -65,7 +68,7 @@ export function AppShell({ me, email, unread, pendingReq, counts, rail, children
         <div>
           <i className="logo" />
           {NAV.map(([href, label, icon, flag]) => {
-            const on = panel ? (panel === 'notif' ? href === '/notifications' : href === '/search') : path.startsWith(href)
+            const on = panel ? (panel === 'notif' ? href === '/notifications' : href === '/search') : ctx ? href === ctx : path.startsWith(href)
             const click = href === '/notifications' ? intercept('notif') : href === '/search' ? intercept('search') : () => setPanel(null)
             return (
               <Link key={href} href={href} aria-label={label} onClick={click} className={'mi' + (on ? ' on' : '') + (flag ? ' ' + flag : '')}>
@@ -86,8 +89,8 @@ export function AppShell({ me, email, unread, pendingReq, counts, rail, children
           ) : (
             <button className="bk" onClick={() => router.back()} aria-label="Back"><Icon n="back" /></button>
           )}
-          {root ? <i className="logo" /> : <span className="ttl">{path.startsWith('/post/') ? 'Post' : TITLES[path] ?? ''}</span>}
-          {path.startsWith('/profile/') || path.startsWith('/post/') ? (
+          {root ? <i className="logo" /> : <span className="ttl">{path.startsWith('/post/') ? 'Post' : path.startsWith('/reflection/') ? 'Reflection' : TITLES[path] ?? ''}</span>}
+          {path.startsWith('/profile/') || path.startsWith('/post/') || path.startsWith('/reflection/') ? (
             <button className="bell" aria-label="Copy link" onClick={() => { navigator.clipboard?.writeText(location.href); toast('Link copied') }}>⋮</button>
           ) : (
             <Link href="/notifications" aria-label="Notifications" className="bell">

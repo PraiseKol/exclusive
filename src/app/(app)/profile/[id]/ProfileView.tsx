@@ -7,17 +7,19 @@ import { Icon } from '@/components/Icon'
 import { Modal, toast, toastErr } from '@/components/Modal'
 import { RequestModal } from '@/components/RequestModal'
 import { BlockModal, ReportModal } from '@/components/ReportModal'
+import { InfiniteFeed } from '@/components/InfiniteFeed'
 import { PostCard, type Post } from '@/components/PostCard'
-import { ReflectionCard, type ReflectionRow } from '@/components/ReflectionCard'
+import type { Page } from '@/lib/feed'
+import { sweepOrphans } from '@/lib/storageCleanup'
 import { createClient } from '@/lib/supabase/client'
 import { prepareImage, uploadOptions, pathFromPublicUrl } from '@/lib/image'
 import { GRADES, errMsg } from '@/lib/util'
 
 type Tab = 'posts' | 'reflections' | 'circle' | 'events'
 
-export function ProfileView({ profile, meId, mine, connected, pendingId, initialTab, initialEdit, myRating, connId, posts, reflections, extra }: {
+export function ProfileView({ profile, meId, mine, connected, pendingId, initialTab, initialEdit, myRating, connId, pinned, postsInit, reflInit, extra }: {
   profile: any; meId: string; mine: boolean; connected: boolean; pendingId: string | null; initialTab?: string; initialEdit?: boolean; myRating?: number; connId?: string | null
-  posts: Post[]; reflections: ReflectionRow[]; extra: any
+  pinned: Post[]; postsInit: Page; reflInit: Page; extra: any
 }) {
   const sb = createClient()
   const router = useRouter()
@@ -27,6 +29,7 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
   useEffect(() => setTab(startTab), [startTab]) // eslint-disable-line react-hooks/exhaustive-deps
   const [sheet, setSheet] = useState<null | 'request' | 'limits' | 'edit' | 'grade' | 'end' | 'more' | 'report' | 'block'>(mine && initialEdit ? 'edit' : null)
   const [pid, setPid] = useState<string | null>(pendingId)
+  useEffect(() => { if (mine) sweepOrphans(sb, meId, profile.avatar_url).catch(() => {}) }, [mine, meId]) // eslint-disable-line react-hooks/exhaustive-deps
   const tier = profile.premium_tier as number
 
   async function cancelRequest() {
@@ -159,14 +162,15 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
               ))}
             </div>
           )}
-          <div className="pgrid">{posts.map((p) => <PostCard key={p.id} post={p} meId={meId} pin={p.is_global} />)}</div>
-          {posts.length === 0 && <div className="empty">No posts you can view. Regular posts are visible within the 2-layer network.</div>}
+          {pinned.length > 0 && <div className="pgrid" style={{ paddingBottom: 0 }}>{pinned.map((p) => <PostCard key={p.id} post={p} meId={meId} pin />)}</div>}
+          <InfiniteFeed source="profile-posts" arg={profile.id} initial={postsInit.items} next={postsInit.next} meId={meId} className="pgrid" endNote={false}
+            empty={pinned.length === 0 ? <div className="empty">No posts you can view. Regular posts are visible within the 2-layer network.</div> : <></>} />
         </>
       )}
       {tab === 'reflections' && (
         <>
-          <div className="pgrid">{reflections.map((row) => <ReflectionCard key={row.id} row={row} meId={meId} />)}</div>
-          {reflections.length === 0 && <div className="empty">Reflections appear here: posts that resonated, with the person’s own thoughts added.</div>}
+          <InfiniteFeed source="profile-reflections" arg={profile.id} initial={reflInit.items} next={reflInit.next} meId={meId} className="pgrid" endNote={false}
+            empty={<div className="empty">Reflections appear here: posts that resonated, with the person’s own thoughts added.</div>} />
         </>
       )}
       {tab === 'circle' && mine && <CircleTab profile={profile} extra={extra} meId={meId} />}
