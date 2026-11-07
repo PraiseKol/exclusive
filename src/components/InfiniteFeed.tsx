@@ -9,9 +9,9 @@ import { ReflectionCard } from './ReflectionCard'
 const keyOf = (i: FeedItem) => i.k + i.id
 
 /** Endless list: shows the first page rendered by the server, then loads older items as you scroll. */
-export function InfiniteFeed({ source, arg, initial, next, meId, empty, className, pinGlobal, endNote = true }: {
+export function InfiniteFeed({ source, arg, initial, next, meId, empty, className, pinGlobal, endNote = true, exclude }: {
   source: Source; arg?: string; initial: FeedItem[]; next: Cursor | null; meId: string
-  empty: ReactNode; className?: string; pinGlobal?: boolean; endNote?: boolean
+  empty: ReactNode; className?: string; pinGlobal?: boolean; endNote?: boolean; exclude?: string
 }) {
   const [items, setItems] = useState<FeedItem[]>(initial)
   const [cursor, setCursor] = useState<Cursor | null>(next)
@@ -51,17 +51,18 @@ export function InfiniteFeed({ source, arg, initial, next, meId, empty, classNam
   const sentinel = useSentinel(loadMore, !!cursor && !failed, items.length)
   const remove = (id: string) => setItems((prev) => prev.filter((i) => i.id !== id))
 
-  if (items.length === 0 && !cursor) return <>{empty}</>
+  const shown = exclude ? items.filter((i) => keyOf(i) !== exclude) : items
+  if (shown.length === 0 && !cursor) return <>{empty}</>
   return (
     <>
       <div className={className}>
-        {items.map((i) => i.k === 'p'
+        {shown.map((i) => i.k === 'p'
           ? <PostCard key={keyOf(i)} post={i.post} meId={meId} pin={pinGlobal && i.post.is_global} onRemoved={remove} />
           : <ReflectionCard key={keyOf(i)} row={i.row} meId={meId} onRemoved={remove} />)}
       </div>
       {cursor && !failed && <div ref={sentinel} className="more" aria-live="polite">{loading ? <span className="spin" aria-label="Loading more" /> : null}</div>}
       {failed && <div className="more"><button className="btn sec" onClick={() => { setFailed(false); loadMore() }}>Couldn’t load more. Tap to retry</button></div>}
-      {!cursor && endNote && items.length > 0 && <div className="more sub">You’re all caught up</div>}
+      {!cursor && endNote && shown.length > 0 && <div className="more sub">You’re all caught up</div>}
     </>
   )
 }

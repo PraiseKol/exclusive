@@ -1,18 +1,12 @@
-import { notFound } from 'next/navigation'
-import { PostCard, type Post } from '@/components/PostCard'
-import { PostComments } from './PostComments'
+import { notFound, redirect } from 'next/navigation'
+import { feedHref } from '@/lib/links'
 import { createClient } from '@/lib/supabase/server'
 
-export default async function PostPage({ params }: { params: Promise<{ id: string }> }) {
+// Links to a post open it inside its feed: Global Posts for global posts, Home otherwise.
+export default async function PostRedirect({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const sb = await createClient()
-  const { data: { user } } = await sb.auth.getUser()
-  const { data: post } = await sb.from('post_feed').select('*').eq('id', id).maybeSingle()
-  if (!post) notFound()
-  return (
-    <div className="postpage">
-      <PostCard post={post as Post} meId={user!.id} detail />
-      <PostComments postId={id} meId={user!.id} />
-    </div>
-  )
+  const { data } = await sb.from('post_feed').select('id,is_global').eq('id', id).maybeSingle()
+  if (!data) notFound()
+  redirect(feedHref('p', data.id, data.is_global))
 }

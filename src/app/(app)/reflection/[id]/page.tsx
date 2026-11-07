@@ -1,18 +1,12 @@
-import { notFound } from 'next/navigation'
-import { ReflectionCard, type ReflectionRow } from '@/components/ReflectionCard'
+import { notFound, redirect } from 'next/navigation'
+import { feedHref } from '@/lib/links'
 import { createClient } from '@/lib/supabase/server'
-import { ReflectionComments } from './ReflectionComments'
 
-export default async function ReflectionPage({ params }: { params: Promise<{ id: string }> }) {
+// Links to a reflection open it inside its feed: Global Posts if it reflects a global post, Home otherwise.
+export default async function ReflectionRedirect({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const sb = await createClient()
-  const { data: { user } } = await sb.auth.getUser()
-  const { data: row } = await sb.from('reflection_feed').select('*').eq('id', id).maybeSingle()
-  if (!row) notFound()
-  return (
-    <div className="postpage">
-      <ReflectionCard row={row as ReflectionRow} meId={user!.id} detail />
-      <ReflectionComments id={id} meId={user!.id} />
-    </div>
-  )
+  const { data } = await sb.from('reflection_feed').select('id,post_is_global').eq('id', id).maybeSingle()
+  if (!data) notFound()
+  redirect(feedHref('r', data.id, data.post_is_global))
 }

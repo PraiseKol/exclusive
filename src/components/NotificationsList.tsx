@@ -82,7 +82,7 @@ export function NotificationsList({ onNavigate }: { onNavigate?: () => void }) {
         n.type === 'request' && n.ref_id ? (
           <button key={n.id} className="row" style={{ padding: '12px 20px', opacity: n.read ? 0.75 : 1 }} onClick={() => setReview(n.ref_id)}><Row n={n} /></button>
         ) : (
-          <Link key={n.id} href={n.type === 'accepted' ? '/circles' : n.post_id && n.type !== 'comment' ? `/post/${n.post_id}` : n.actor ? `/profile/${n.actor.id}` : '/home'} onClick={onNavigate}
+          <Link key={n.id} href={n.type === 'accepted' ? '/circles' : n.type === 'reflection' && n.ref_id ? `/reflection/${n.ref_id}` : n.post_id ? `/post/${n.post_id}` : n.actor ? `/profile/${n.actor.id}` : '/home'} onClick={onNavigate}
             className="row" style={{ padding: '12px 20px', opacity: n.read ? 0.75 : 1 }}><Row n={n} /></Link>
         )
       )}

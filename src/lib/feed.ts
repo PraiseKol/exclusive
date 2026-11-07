@@ -85,3 +85,15 @@ export const LOADERS: Record<Source, (sb: Sb, before: Cursor | null, arg?: strin
   'profile-posts': (sb, b, arg) => loadProfilePosts(sb, arg!, b),
   'profile-reflections': (sb, b, arg) => loadProfileReflections(sb, arg!, b),
 }
+
+/** The post or reflection the person clicked (from `?focus=p:ID` or `?focus=r:ID`), if they are allowed to see it. */
+export async function loadFocus(sb: Sb, focus?: string | null): Promise<FeedItem | null> {
+  const m = /^(p|r):([0-9a-f-]{36})$/i.exec(focus ?? '')
+  if (!m) return null
+  if (m[1] === 'p') {
+    const { data } = await sb.from('post_feed').select('*').eq('id', m[2]).maybeSingle()
+    return data ? { k: 'p', id: data.id, t: data.created_at, post: data } : null
+  }
+  const { data } = await sb.from('reflection_feed').select('*').eq('id', m[2]).maybeSingle()
+  return data ? { k: 'r', id: data.id, t: data.created_at, row: data } : null
+}

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { ago, errMsg } from '@/lib/util'
+import { feedHref } from '@/lib/links'
 import { Avatar } from './Avatar'
 import { CommentsSheet } from './CommentThread'
 import { Icon } from './Icon'
@@ -27,7 +28,7 @@ export function ReflectionCard({ row, meId, detail, onRemoved }: { row: Reflecti
   const router = useRouter()
   const sb = createClient()
   const mine = row.reflector_id === meId
-  const from = row.post_is_global ? 'global' : 'home' // where this opens: Global Posts for global content, Home otherwise
+  const isGlobal = row.post_is_global // reflections of global posts open in Global Posts, the rest in Home
   const [liked, setLiked] = useState(row.liked_by_me)
   const [likes, setLikes] = useState(row.like_count)
   const [noted, setNoted] = useState(row.noted_by_me)
@@ -44,7 +45,7 @@ export function ReflectionCard({ row, meId, detail, onRemoved }: { row: Reflecti
   const parentOfThis = row.parent_reflection_id && row.parent_body !== null
     ? { id: row.parent_reflection_id, body: row.parent_body, reflector_id: row.parent_reflector_id ?? '', reflector_name: row.parent_reflector_name ?? 'Unavailable', reflector_avatar: row.parent_reflector_avatar }
     : null
-  const link = `/reflection/${row.id}?from=${from}`
+  const link = feedHref('r', row.id, isGlobal)
 
   async function toggleLike() {
     const was = liked
@@ -68,7 +69,7 @@ export function ReflectionCard({ row, meId, detail, onRemoved }: { row: Reflecti
     setSheet(null)
     if (error) return toastErr(errMsg(error))
     toast('Reflection deleted'); onRemoved?.(row.id)
-    if (detail) router.replace(from === 'global' ? '/global' : '/home'); else router.refresh()
+    if (detail) router.replace(isGlobal ? '/global' : '/home'); else router.refresh()
   }
   const share = () => { navigator.clipboard?.writeText(`${location.origin}${link}`); toast('Link copied') }
 
@@ -88,9 +89,9 @@ export function ReflectionCard({ row, meId, detail, onRemoved }: { row: Reflecti
       {header}
       {detail ? <p className="pt">{row.body}</p> : <Link href={link} className="plink" aria-label="Open reflection"><p className="pt">{row.body}</p></Link>}
       {parentOfThis && (
-        <QuotedReflection r={parentOfThis} onOpen={() => router.push(`/reflection/${parentOfThis.id}?from=${from}`)} />
+        <QuotedReflection r={parentOfThis} onOpen={() => router.push(feedHref('r', parentOfThis.id, isGlobal))} />
       )}
-      <QuotedPost q={quote} onOpen={() => router.push(`/post/${row.post_id}?from=${from}`)} />
+      <QuotedPost q={quote} onOpen={() => router.push(feedHref('p', row.post_id, isGlobal))} />
 
       <div className="act">
         <button className={'lkb' + (liked ? ' on' : '')} onClick={toggleLike} aria-pressed={liked} aria-label="Like"><Icon n="heart" />{likes}</button>
