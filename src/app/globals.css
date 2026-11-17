@@ -377,3 +377,8 @@ main:has(.msg-wrap){padding-bottom:0}
 .focus-sep{padding:12px 20px;font-size:13px;color:var(--n500);background:var(--n100);border-top:.5px solid var(--n200);border-bottom:.5px solid var(--n200)}
 .focus .cthread.inline .cdock{position:sticky;bottom:0}
 @media(max-width:760px){.focus .cthread.inline .cdock{bottom:calc(56px + env(safe-area-inset-bottom,0px))}}
+
+.hlrow{display:flex;gap:8px;flex-wrap:wrap;padding:0 20px 12px}
+@media(max-width:760px){.hlrow{padding:0 16px 10px}}
+
+.pbadge{margin-left:4px;font-size:13px}

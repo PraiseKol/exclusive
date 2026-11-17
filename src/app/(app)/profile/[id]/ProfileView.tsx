@@ -6,6 +6,8 @@ import { Avatar } from '@/components/Avatar'
 import { Icon } from '@/components/Icon'
 import { Modal, toast, toastErr } from '@/components/Modal'
 import { RequestModal } from '@/components/RequestModal'
+import { SharedLogModal } from '@/components/SharedLogModal'
+import { TipModal } from '@/components/TipModal'
 import { BlockModal, ReportModal } from '@/components/ReportModal'
 import { InfiniteFeed } from '@/components/InfiniteFeed'
 import { PostCard, type Post } from '@/components/PostCard'
@@ -17,9 +19,9 @@ import { GRADES, errMsg } from '@/lib/util'
 
 type Tab = 'posts' | 'reflections' | 'circle' | 'events'
 
-export function ProfileView({ profile, meId, mine, connected, pendingId, initialTab, initialEdit, myRating, connId, pinned, postsInit, reflInit, extra }: {
+export function ProfileView({ profile, meId, mine, connected, pendingId, initialTab, initialEdit, myRating, connId, pinned, postsInit, reflInit, highlights, extra }: {
   profile: any; meId: string; mine: boolean; connected: boolean; pendingId: string | null; initialTab?: string; initialEdit?: boolean; myRating?: number; connId?: string | null
-  pinned: Post[]; postsInit: Page; reflInit: Page; extra: any
+  pinned: Post[]; postsInit: Page; reflInit: Page; highlights: { month: string; mentor: { id: string; display_name: string } | null }[]; extra: any
 }) {
   const sb = createClient()
   const router = useRouter()
@@ -27,7 +29,7 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
   const startTab = (tabs as string[]).includes(initialTab ?? '') ? (initialTab as Tab) : 'posts'
   const [tab, setTab] = useState<Tab>(startTab)
   useEffect(() => setTab(startTab), [startTab]) // eslint-disable-line react-hooks/exhaustive-deps
-  const [sheet, setSheet] = useState<null | 'request' | 'limits' | 'edit' | 'grade' | 'end' | 'more' | 'report' | 'block'>(mine && initialEdit ? 'edit' : null)
+  const [sheet, setSheet] = useState<null | 'request' | 'limits' | 'edit' | 'grade' | 'end' | 'more' | 'report' | 'block' | 'tip'>(mine && initialEdit ? 'edit' : null)
   const [pid, setPid] = useState<string | null>(pendingId)
   useEffect(() => { if (mine) sweepOrphans(sb, meId, profile.avatar_url).catch(() => {}) }, [mine, meId]) // eslint-disable-line react-hooks/exhaustive-deps
   const tier = profile.premium_tier as number
@@ -99,10 +101,11 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
               {pid && !connected
                 ? <button className="bo pm-cta" onClick={cancelRequest}>Cancel request</button>
                 : <button className="btn pm-cta" disabled={connected} onClick={() => setSheet('request')}>{connected ? 'In your circle' : 'Mentor me'}</button>}
-              {connected && (
+              {(connected || profile.tip_jar_enabled) && (
                 <div className="pm-links">
-                  <Link className="lk" href={`/messages?to=${profile.id}`}>Message</Link>
-                  {connId && <button className="lk" style={{ color: '#d92d20' }} onClick={() => setSheet('end')}>End connection</button>}
+                  {connected && <Link className="lk" href={`/messages?to=${profile.id}`}>Message</Link>}
+                  {profile.tip_jar_enabled && <button className="lk" onClick={() => setSheet('tip')}>💎 Send a tip</button>}
+                  {connected && connId && <button className="lk" style={{ color: '#d92d20' }} onClick={() => setSheet('end')}>End connection</button>}
                 </div>
               )}
             </>
@@ -135,6 +138,7 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
                 <button className={'rate' + (vote === 1 ? ' on' : '')} aria-label="Thumbs up" aria-pressed={vote === 1} onClick={() => rate(1)}><Icon n="up" /></button>
                 <button className={'rate' + (vote === -1 ? ' on' : '')} aria-label="Thumbs down" aria-pressed={vote === -1} onClick={() => rate(-1)}><Icon n="down" /></button>
                 {connected && <Link className="btn sec" href={`/messages?to=${profile.id}`}>Message</Link>}
+                {profile.tip_jar_enabled && <button className="btn sec dskonly" onClick={() => setSheet('tip')}>💎 Tip</button>}
                 {connected && connId && <button className="bo" style={{ padding: '10px 14px', borderRadius: 8, color: '#d92d20', borderColor: '#d92d20' }} onClick={() => setSheet('end')}>End connection</button>}
                 {pid && !connected
                   ? <button className="bo" style={{ padding: '10px 14px', borderRadius: 8 }} onClick={cancelRequest}>Cancel request</button>
@@ -148,6 +152,11 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
         </div>
       </div>
 
+      {highlights.length > 0 && (
+        <div className="hlrow" aria-label="Mentee highlights">
+          {highlights.map((h) => <span key={h.month + (h.mentor?.id ?? '')} className="chip">⭐ Highlighted by {h.mentor?.display_name ?? 'a mentor'} · {new Date(h.month).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}</span>)}
+        </div>
+      )}
       <div className="tabs ptabs">
         {tabs.map((t) => <button key={t} className={(tab === t ? 'on' : '') + (t === 'events' && !mine ? ' evother' : '')} onClick={() => setTab(t)}>{t[0].toUpperCase() + t.slice(1)}</button>)}
       </div>
@@ -184,7 +193,8 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
         </div>
       )}
 
-      {sheet === 'request' && <RequestModal person={{ id: profile.id, display_name: profile.display_name }} onClose={() => setSheet(null)} onSent={(id) => setPid(id)} />}
+      {sheet === 'tip' && <TipModal person={{ id: profile.id, display_name: profile.display_name }} onClose={() => setSheet(null)} />}
+      {sheet === 'request' && <RequestModal person={{ id: profile.id, display_name: profile.display_name, slotPriceKobo: profile.paid_slots_enabled ? profile.slot_price_kobo : null }} onClose={() => setSheet(null)} onSent={(id) => setPid(id)} />}
       {sheet === 'end' && (
         <Modal title="End connection" onClose={() => setSheet(null)}>
           <div className="mb">
@@ -224,7 +234,7 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
                 Direct messages left this month: {extra.limits.emergency_left} emergency, {extra.limits.important_left} important.
               </p>
             )}
-            {tier === 0 && <button className="btn" style={{ width: '100%', padding: 14, borderRadius: 8 }} onClick={() => toast('Premium checkout is coming soon', 'info')}>Upgrade to Premium</button>}
+            {tier === 0 && <button className="btn" style={{ width: '100%', padding: 14, borderRadius: 8 }} onClick={() => router.push('/premium')}>Upgrade to Premium</button>}
           </div>
         </Modal>
       )}
@@ -287,11 +297,7 @@ function CircleTab({ profile, extra, meId }: { profile: any; extra: any; meId: s
   const [months, setMonths] = useState(1)
   const days = (iso: string) => Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000)
 
-  async function flag(col: 'tip_jar_enabled' | 'paid_slots_enabled') {
-    const { error } = await sb.from('profiles').update({ [col]: !profile[col] }).eq('id', meId)
-    if (error) return toastErr(errMsg(error))
-    router.refresh()
-  }
+  const [logFor, setLogFor] = useState<{ id: string; name: string } | null>(null)
   async function call(fn: string, args: any, ok: string) {
     const { error } = await sb.rpc(fn, args)
     if (error) return toastErr(errMsg(error))
@@ -300,10 +306,7 @@ function CircleTab({ profile, extra, meId }: { profile: any; extra: any; meId: s
 
   return (
     <div style={{ padding: '12px 20px' }}>
-      <div className="row"><div className="grow">Tip jar<div className="sub">Receive micro-tips (Premium Tier 2)</div></div>
-        <button className={'pill' + (profile.tip_jar_enabled ? ' on' : '')} onClick={() => flag('tip_jar_enabled')}>{profile.tip_jar_enabled ? 'On' : 'Off'}</button></div>
-      <div className="row"><div className="grow">Paid mentee slots<div className="sub">Platform keeps a 10% commission (Premium)</div></div>
-        <button className={'pill' + (profile.paid_slots_enabled ? ' on' : '')} onClick={() => flag('paid_slots_enabled')}>{profile.paid_slots_enabled ? 'On' : 'Off'}</button></div>
+      <Link className="row" href="/monetization"><div className="grow">Monetization<div className="sub">Tip Jar, paid mentee slots, earnings and payouts</div></div><span className="lk">Open ›</span></Link>
       <p className="sub">Mentors {extra.limits?.mentors_used}/{extra.limits?.mentors_cap} · Mentees {extra.limits?.mentees_used}/{extra.limits?.mentees_cap}</p>
       {(extra.circle ?? []).map((c: any) => {
         const iMentor = c.mentor_id === meId
@@ -327,11 +330,13 @@ function CircleTab({ profile, extra, meId }: { profile: any; extra: any; meId: s
                 <button className="lk" onClick={() => call('highlight_mentee', { p_mentee: other.id }, 'Highlighted as this month’s most engaging mentee')}>Highlight</button>
               </>
             )}
+            <button className="lk" onClick={() => setLogFor({ id: c.id, name: other.display_name })}>Shared log</button>
             <button className="lk" onClick={() => call('end_connection', { p_conn: c.id }, 'Mentorship ended')}>End</button>
           </div>
         )
       })}
       {(extra.circle ?? []).length === 0 && <div className="empty">Your circle is empty. Send a mentor request to get started.</div>}
+      {logFor && <SharedLogModal connectionId={logFor.id} otherName={logFor.name} meId={meId} onClose={() => setLogFor(null)} />}
     </div>
   )
 }

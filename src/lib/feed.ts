@@ -7,7 +7,7 @@ export type FeedItem =
   | { k: 'r'; id: string; t: string; row: ReflectionRow }
 export type Cursor = { t: string; id: string }
 export type Page = { items: FeedItem[]; next: Cursor | null }
-export type Source = 'home' | 'global' | 'noted' | 'profile-posts' | 'profile-reflections'
+export type Source = 'home' | 'global' | 'noted' | 'profile-posts' | 'profile-reflections' | 'org-posts'
 export const PAGE_SIZE = 15
 
 type Sb = any
@@ -78,12 +78,23 @@ export async function loadProfileReflections(sb: Sb, pid: string, before?: Curso
   return { items, next: rows.length >= limit ? { t: rows[rows.length - 1].created_at, id: rows[rows.length - 1].id } : null }
 }
 
+export async function loadOrgPosts(sb: Sb, orgId: string, before?: Cursor | null, limit = PAGE_SIZE): Promise<Page> {
+  let q = sb.from('post_feed').select('*').eq('org_id', orgId).eq('is_disabled', false)
+    .or(`scheduled_for.is.null,scheduled_for.lte.${new Date().toISOString()}`).order('created_at', { ascending: false }).limit(limit)
+  if (before) q = q.lt('created_at', before.t)
+  const { data } = await q
+  const rows: Post[] = data ?? []
+  const items: FeedItem[] = rows.map((p) => ({ k: 'p', id: p.id, t: p.created_at, post: p }))
+  return { items, next: rows.length >= limit ? { t: rows[rows.length - 1].created_at, id: rows[rows.length - 1].id } : null }
+}
+
 export const LOADERS: Record<Source, (sb: Sb, before: Cursor | null, arg?: string) => Promise<Page>> = {
   home: (sb, b) => loadHome(sb, b),
   global: (sb, b) => loadGlobal(sb, b),
   noted: (sb, b) => loadNoted(sb, b),
   'profile-posts': (sb, b, arg) => loadProfilePosts(sb, arg!, b),
   'profile-reflections': (sb, b, arg) => loadProfileReflections(sb, arg!, b),
+  'org-posts': (sb, b, arg) => loadOrgPosts(sb, arg!, b),
 }
 
 /** The post or reflection the person clicked (from `?focus=p:ID` or `?focus=r:ID`), if they are allowed to see it. */

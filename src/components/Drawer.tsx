@@ -11,7 +11,8 @@ const ITEMS = [
   ['/noted', 'Noted', 'bm'],
   ['/profile/me?tab=events', 'Events', 'cal'],
   ['/premium', 'Premium', 'spark'],
-  ['/profile/me?tab=circle', 'Monetization', 'cash'],
+  ['/monetization', 'Monetization', 'cash'],
+  ['/orgs', 'Organizations', 'users'],
   ['/help', 'Help Center', 'help'],
   ['/settings', 'Settings', 'gear'],
 ] as const

@@ -38,3 +38,11 @@ Import the repo into Vercel and set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_
 
 ## Images
 Photos are resized in the browser before upload (profile photos: 320 px square WebP; post photos: max 1280 px WebP at about 80% quality), which also removes hidden location/camera data. Files are cached for a year. Old files are deleted when a profile photo is replaced or a normal post is deleted. Post photos live in a **private** bucket and are shown through expiring links that are only issued for posts the viewer is allowed to see.
+
+## Payments, Premium and monetization (Paystack)
+1. Create a Paystack account and copy your **test** secret key (`sk_test_...`) from Settings → API Keys.
+2. Add to `.env.local` (and Vercel): `PAYSTACK_SECRET_KEY=...` and `SUPABASE_SERVICE_ROLE_KEY=...` (server only).
+3. In Paystack → Settings → API Keys & Webhooks, set the webhook URL to `https://YOUR-SITE/api/pay/webhook`.
+4. Set your real prices and limits in `src/lib/plans.ts` (placeholders are NGN 2,000 / 5,000 per 30 days for Premium and Tier 2).
+5. Test with Paystack's test cards, then switch to the live key. Payouts to mentors use Paystack Transfers, which must be enabled on your Paystack account.
+6. Daily housekeeping (expiry reminders, ending lapsed plans, cancelling unpaid mentorships after 7 days) runs automatically at 03:00 UTC through pg_cron in Supabase.

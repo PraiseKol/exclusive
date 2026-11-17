@@ -2,9 +2,10 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { errMsg } from '@/lib/util'
+import { money } from '@/lib/plans'
 import { Modal, toast, toastErr } from './Modal'
 
-export function RequestModal({ person, onClose, onSent }: { person: { id: string; display_name: string }; onClose: () => void; onSent: (requestId: string) => void }) {
+export function RequestModal({ person, onClose, onSent }: { person: { id: string; display_name: string; slotPriceKobo?: number | null }; onClose: () => void; onSent: (requestId: string) => void }) {
   const [goal, setGoal] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -20,6 +21,7 @@ export function RequestModal({ person, onClose, onSent }: { person: { id: string
   return (
     <Modal title="Send a request" onClose={onClose}>
       <div className="mb">
+        {person.slotPriceKobo ? <div className="tip">💳 {person.display_name} charges {money(person.slotPriceKobo)} for a mentee slot. You pay only if they accept your request.</div> : null}
         <div className="tip">💡 Tip: A short note helps mentors understand your goals and increases your chances of being accepted.</div>
         <div>
           <textarea autoFocus maxLength={200} placeholder="Add a short note talking about yourself and your goals (optional)" value={goal} onChange={(e) => setGoal(e.target.value)} />

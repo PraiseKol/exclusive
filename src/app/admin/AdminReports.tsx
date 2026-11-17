@@ -5,6 +5,7 @@ import { toast, toastErr } from '@/components/Modal'
 import { createClient } from '@/lib/supabase/client'
 import { useSignedUrls } from '@/lib/signedUrls'
 import { ago, errMsg } from '@/lib/util'
+import { AdminPayouts } from './AdminPayouts'
 
 const REASON: Record<string, string> = {
   spam: 'Spam or scam', harassment: 'Harassment or bullying', hate: 'Hate speech', sexual: 'Nudity or sexual content',
@@ -26,12 +27,13 @@ function Thumbs({ paths }: { paths: string[] }) {
 
 export function AdminReports() {
   const sb = createClient()
-  const [tab, setTab] = useState<'open' | 'done'>('open')
+  const [tab, setTab] = useState<'open' | 'done' | 'payouts'>('open')
   const [rows, setRows] = useState<any[] | null>(null)
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState('')
 
   const load = useCallback(async () => {
+    if (tab === 'payouts') return
     const { data, error } = await sb.rpc('admin_list_reports', { p_status: tab === 'open' ? 'open' : 'all' })
     if (error) return toastErr(errMsg(error))
     setRows(((data as any[]) ?? []).filter((r) => (tab === 'open' ? r.status === 'open' : r.status !== 'open')))
@@ -61,7 +63,9 @@ export function AdminReports() {
       <div className="tabs" style={{ padding: 0 }}>
         <button className={tab === 'open' ? 'on' : ''} onClick={() => setTab('open')}>Open</button>
         <button className={tab === 'done' ? 'on' : ''} onClick={() => setTab('done')}>Resolved</button>
+        <button className={tab === 'payouts' ? 'on' : ''} onClick={() => setTab('payouts')}>Payouts</button>
       </div>
+      {tab === 'payouts' ? <AdminPayouts /> : <>
       {rows === null && <div className="empty">Loading…</div>}
       {rows?.length === 0 && <div className="empty">{tab === 'open' ? 'No open reports. 🎉' : 'Nothing resolved yet.'}</div>}
       {rows?.map((r) => (
@@ -97,6 +101,7 @@ export function AdminReports() {
           )}
         </article>
       ))}
+      </>}
     </>
   )
 }

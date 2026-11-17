@@ -19,15 +19,17 @@ export type Post = {
   author_name: string; author_headline: string; author_avatar: string | null; author_grade: string; images?: string[]
   like_count: number; reflection_count: number; comment_count: number
   liked_by_me: boolean; reflected_by_me: boolean; noted_by_me: boolean
+  org_name?: string | null; author_tier?: number; edited_at?: string | null
 }
 
 export function PostCard({ post, meId, pin, detail, onRemoved }: { post: Post; meId: string; pin?: boolean; detail?: boolean; onRemoved?: (id: string) => void }) {
+  const [text, setText] = useState(post.body)
   const open = feedHref('p', post.id, post.is_global) // Global Posts for global posts, Home otherwise
   const router = useRouter()
   const sb = createClient()
   const [s, setS] = useState({ l: post.liked_by_me, r: post.reflected_by_me, n: post.noted_by_me })
   const [counts, setCounts] = useState({ l: post.like_count, r: post.reflection_count, c: post.comment_count })
-  const [sheet, setSheet] = useState<null | 'comments' | 'options' | 'global' | 'more' | 'reflect' | 'report' | 'block'>(null)
+  const [sheet, setSheet] = useState<null | 'comments' | 'options' | 'global' | 'more' | 'reflect' | 'report' | 'block' | 'edit'>(null)
   const mine = post.author_id === meId
 
   async function toggle(table: 'post_likes' | 'reflections' | 'noted', key: 'l' | 'r' | 'n', ck?: 'l' | 'r') {
@@ -61,7 +63,7 @@ export function PostCard({ post, meId, pin, detail, onRemoved }: { post: Post; m
       <div className="ph">
         <Link href={`/profile/${post.author_id}`}><Avatar name={post.author_name} url={post.author_avatar} /></Link>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div><Link href={`/profile/${post.author_id}`}><b>{post.author_name}</b></Link> <span className="sub">· {ago(post.created_at)}</span>{post.is_global && <span className="gico" title="Global Post"><Icon n="globe" /></span>}</div>
+          <div><Link href={`/profile/${post.author_id}`}><b>{post.author_name}</b></Link>{(post.author_tier ?? 0) > 0 && <span className="pbadge" title="Premium member" aria-label="Premium member">💎</span>} <span className="sub">· {ago(post.created_at)}{post.edited_at ? ' · edited' : ''}{post.org_name ? ` · for ${post.org_name}` : ''}</span>{post.is_global && <span className="gico" title="Global Post"><Icon n="globe" /></span>}</div>
           <div className="sub" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{post.author_headline}</div>
         </div>
         {pin && <span className="pinic" title="Global Post"><Icon n="pin" /></span>}
@@ -69,7 +71,7 @@ export function PostCard({ post, meId, pin, detail, onRemoved }: { post: Post; m
       </div>
       {(() => {
         const urls = post.images?.length ? post.images : post.image_url ? [post.image_url] : []
-        const body = <><p className="pt">{post.body}</p><ImageGrid urls={urls} /></>
+        const body = <><p className="pt">{text}</p><ImageGrid urls={urls} /></>
         return detail ? body : <Link href={open} className="plink" aria-label="Open post">{body}</Link>
       })()}
       <div className="act">
@@ -101,11 +103,13 @@ export function PostCard({ post, meId, pin, detail, onRemoved }: { post: Post; m
           </div>
         </Modal>
       )}
+      {sheet === 'edit' && <EditPostModal id={post.id} body={text} onClose={() => setSheet(null)} onSaved={(b) => { setText(b); setSheet(null) }} />}
       {sheet === 'report' && <ReportModal target={{ type: 'post', id: post.id }} onClose={() => setSheet(null)} />}
       {sheet === 'block' && <BlockModal user={{ id: post.author_id, name: post.author_name }} onClose={() => setSheet(null)} />}
       {sheet === 'options' && (
         <Modal title="Post options" bare onClose={() => setSheet(null)}>
           <div className="mb">
+            <button className="row optrow" onClick={() => setSheet('edit')}><Icon n="chat" />Edit post</button>
             {!post.is_global && <button className="row optrow" onClick={() => setSheet('global')}><Icon n="globe" />Make global post</button>}
             <button className="row optrow" onClick={() => run('delete_post', post.is_global ? 'Saved to drafts. You can restore it from your profile.' : 'Post deleted')}><Icon n="trash" />Delete post</button>
           </div>
@@ -124,5 +128,28 @@ export function PostCard({ post, meId, pin, detail, onRemoved }: { post: Post; m
         </Modal>
       )}
     </article>
+  )
+}
+
+function EditPostModal({ id, body, onClose, onSaved }: { id: string; body: string; onClose: () => void; onSaved: (b: string) => void }) {
+  const router = useRouter()
+  const [v, setV] = useState(body)
+  const [busy, setBusy] = useState(false)
+  async function save() {
+    if (!v.trim()) return toastErr('A post can’t be empty')
+    setBusy(true)
+    const { error } = await createClient().from('posts').update({ body: v.trim() }).eq('id', id)
+    setBusy(false)
+    if (error) return toastErr(errMsg(error))
+    toast('Post updated'); onSaved(v.trim()); router.refresh()
+  }
+  return (
+    <Modal title="Edit post" onClose={onClose}>
+      <div className="mb">
+        <p className="sub" style={{ margin: 0 }}>Editing is a Premium feature and works for 2 hours after you post.</p>
+        <textarea autoFocus maxLength={5000} value={v} onChange={(e) => setV(e.target.value)} style={{ height: 140 }} />
+        <div className="fr"><button className="btn sec" onClick={onClose}>Cancel</button><button className="btn" disabled={busy || !v.trim()} onClick={save}>{busy ? 'Saving…' : 'Save'}</button></div>
+      </div>
+    </Modal>
   )
 }

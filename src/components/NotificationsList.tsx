@@ -82,7 +82,7 @@ export function NotificationsList({ onNavigate }: { onNavigate?: () => void }) {
         n.type === 'request' && n.ref_id ? (
           <button key={n.id} className="row" style={{ padding: '12px 20px', opacity: n.read ? 0.75 : 1 }} onClick={() => setReview(n.ref_id)}><Row n={n} /></button>
         ) : (
-          <Link key={n.id} href={n.type === 'accepted' ? '/circles' : n.type === 'reflection' && n.ref_id ? `/reflection/${n.ref_id}` : n.post_id ? `/post/${n.post_id}` : n.actor ? `/profile/${n.actor.id}` : '/home'} onClick={onNavigate}
+          <Link key={n.id} href={n.type === 'accepted' || n.type === 'payment_due' ? '/circles' : n.type === 'tip' || n.type === 'payment_received' ? '/monetization' : n.type === 'premium' ? '/premium' : n.type === 'org_invite' || n.type === 'org_update' ? '/orgs' : n.type === 'highlight' ? '/profile/me' : n.type === 'reflection' && n.ref_id ? `/reflection/${n.ref_id}` : n.post_id ? `/post/${n.post_id}` : n.actor ? `/profile/${n.actor.id}` : '/home'} onClick={onNavigate}
             className="row" style={{ padding: '12px 20px', opacity: n.read ? 0.75 : 1 }}><Row n={n} /></Link>
         )
       )}

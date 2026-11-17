@@ -6,6 +6,8 @@ import { Icon } from '@/components/Icon'
 import { DEFAULT_DURATION, DurationPicker, durationArgs, durationLabel, durationValid, type Duration } from '@/components/DurationPicker'
 import { Modal, toast, toastErr } from '@/components/Modal'
 import { createClient } from '@/lib/supabase/client'
+import { startCheckout } from '@/lib/checkout'
+import { money } from '@/lib/plans'
 import { ago, errMsg } from '@/lib/util'
 
 export default function Circles() {
@@ -19,10 +21,18 @@ export default function Circles() {
   const [sheet, setSheet] = useState<null | { kind: 'goal' | 'accept'; r: any }>(null)
   const [dur, setDur] = useState<Duration>(DEFAULT_DURATION)
   const [banner, setBanner] = useState('')
+  const [awaiting, setAwaiting] = useState<any[]>([])
+  const [meId, setMeId] = useState('')
+  const [paying, setPaying] = useState('')
 
   const load = useCallback(async () => {
     const { data: { user } } = await sb.auth.getUser()
     if (!user) return
+    setMeId(user.id)
+    const { data: aw } = await sb.from('connections')
+      .select('id,mentor_id,mentee_id,mentor:profiles!connections_mentor_id_fkey(id,display_name,avatar_url,slot_price_kobo),mentee:profiles!connections_mentee_id_fkey(id,display_name,avatar_url)')
+      .eq('status', 'awaiting_payment')
+    setAwaiting(aw ?? [])
     const [a, b, c] = await Promise.all([
       sb.from('mentor_requests').select('id,goal,created_at,requester:profiles!mentor_requests_requester_id_fkey(id,display_name,headline,avatar_url)').eq('mentor_id', user.id).eq('status', 'pending').order('created_at', { ascending: false }),
       sb.from('mentor_requests').select('id,created_at,mentor:profiles!mentor_requests_mentor_id_fkey(id,display_name,headline,avatar_url)').eq('requester_id', user.id).eq('status', 'pending').order('created_at', { ascending: false }),
@@ -55,6 +65,20 @@ export default function Circles() {
       </div>
       {tab === 'requests' && (
         <>
+          {awaiting.map((c) => {
+            const mine = c.mentee_id === meId
+            const other = mine ? c.mentor : c.mentee
+            return (
+              <div key={c.id} className="row rq">
+                <Avatar name={other.display_name} url={other.avatar_url} size={44} />
+                <div className="grow" style={{ whiteSpace: 'normal' }}>
+                  {mine ? `Pay ${money(c.mentor.slot_price_kobo ?? 0)} to start your mentorship with ${other.display_name}` : `Waiting for ${other.display_name} to pay`}
+                </div>
+                {mine && <button className="btn" disabled={paying === c.id} onClick={async () => { setPaying(c.id); const ok = await startCheckout({ kind: 'slot', connId: c.id }); if (!ok) setPaying('') }}>Pay</button>}
+                <button className="cancelb" onClick={async () => { const { error } = await sb.rpc('end_connection', { p_conn: c.id }); if (error) return toastErr(errMsg(error)); toast('Cancelled'); load() }}>Cancel</button>
+              </div>
+            )
+          })}
           <div className="pb">
             <button className={'pill' + (sub === 'received' ? ' on' : '')} onClick={() => setSub('received')}>Received {rec.length > 0 && `(${rec.length})`}</button>
             <button className={'pill' + (sub === 'sent' ? ' on' : '')} onClick={() => setSub('sent')}>Sent</button>

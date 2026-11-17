@@ -7,7 +7,7 @@ export async function Rail({ meId, tier }: { meId: string; tier: number }) {
   const sb = await createClient()
   const [{ data: conns }, { data: people }] = await Promise.all([
     sb.from('connections').select('mentor_id,mentee_id').eq('status', 'active'),
-    sb.from('profiles').select('id,display_name,headline,avatar_url').neq('id', meId).neq('display_name', '').limit(30),
+    sb.from('profiles').select('id,display_name,headline,avatar_url').neq('id', meId).neq('display_name', '').order('premium_tier', { ascending: false }).limit(30),
   ])
   const linked = new Set((conns ?? []).flatMap((c: any) => [c.mentor_id, c.mentee_id]))
   const sug = (people ?? []).filter((p: any) => !linked.has(p.id)).slice(0, 5)

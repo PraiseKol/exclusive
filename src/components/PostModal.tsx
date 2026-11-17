@@ -18,7 +18,20 @@ export function PostModal({ me, tier, onClose }: { me: string; tier: number; onC
   const [sched, setSched] = useState('')
   const [showSched, setShowSched] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([])
+  const [orgId, setOrgId] = useState('')
 
+  useEffect(() => {
+    (async () => {
+      const sb = createClient()
+      const [{ data: own }, { data: mem }] = await Promise.all([
+        sb.from('organizations').select('id,name').eq('owner_id', me),
+        sb.from('org_members').select('org:organizations(id,name)').eq('user_id', me).eq('status', 'active').in('role', ['management', 'ambassador']),
+      ])
+      const all = [...(own ?? []), ...((mem ?? []).map((m: any) => m.org).filter(Boolean))]
+      setOrgs(all.filter((o: any, i: number) => all.findIndex((x: any) => x.id === o.id) === i))
+    })()
+  }, [me])
   useEffect(() => {
     const h = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', h)
@@ -59,7 +72,7 @@ export function PostModal({ me, tier, onClose }: { me: string; tier: number; onC
           images.push(path)
         }
         const ins = await sb.from('posts')
-          .insert({ author_id: me, body: body.trim(), image_url: images[0] ?? null, images, scheduled_for: sched ? new Date(sched).toISOString() : null })
+          .insert({ author_id: me, body: body.trim(), image_url: images[0] ?? null, images, org_id: orgId || null, scheduled_for: sched ? new Date(sched).toISOString() : null })
           .select('id').single()
         if (ins.error) throw ins.error
         postId = ins.data.id
@@ -103,6 +116,14 @@ export function PostModal({ me, tier, onClose }: { me: string; tier: number; onC
                 </div>
               ))}
             </div>
+          )}
+          {orgs.length > 0 && (
+            <label className="lab">Post as
+              <select value={orgId} onChange={(e) => setOrgId(e.target.value)} style={{ marginTop: 4 }}>
+                <option value="">Myself</option>
+                {orgs.map((o) => <option key={o.id} value={o.id}>{o.name} (organization)</option>)}
+              </select>
+            </label>
           )}
           {showSched && (
             <label className="lab">Publish at

@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const OPEN = ['/terms', '/privacy', '/data-protection'] // readable by everyone, signed in or not
+const OPEN = ['/terms', '/privacy', '/data-protection', '/api/pay/webhook', '/api/pay/return'] // readable by everyone, signed in or not
 const PUBLIC = ['/welcome', '/login', '/signup', '/verify', '/forgot-password', '/reset-password']
 
 export async function updateSession(request: NextRequest) {

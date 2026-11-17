@@ -27,6 +27,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
   const { data: mr } = mine ? { data: null } : await sb.from('ratings').select('value').eq('rater_id', uid).eq('ratee_id', pid).maybeSingle()
   const connected = !mine && (conns ?? []).some((c: any) => c.mentor_id === pid || c.mentee_id === pid)
 
+  const { data: hl } = await sb.from('mentee_highlights').select('month,mentor:profiles!mentee_highlights_mentor_id_fkey(id,display_name)').eq('mentee_id', pid).order('month', { ascending: false }).limit(3)
   let extra: any = {}
   if (!mine) {
     const { data: ev } = await sb.from('events').select('id,mentor_id,event_date,event_time,venue,purpose').eq('mentor_id', pid).order('event_date', { ascending: false }).limit(20)
@@ -46,7 +47,7 @@ export default async function ProfilePage({ params, searchParams }: { params: Pr
   return (
     <ProfileView
       profile={profile} meId={uid} mine={mine} connected={connected} pendingId={(pending ?? [])[0]?.id ?? null} initialTab={tab} initialEdit={edit === '1'} myRating={mr?.value ?? 0} connId={(conns ?? []).find((c: any) => c.mentor_id === pid || c.mentee_id === pid)?.id ?? null}
-      pinned={pinned} postsInit={postsPage} reflInit={reflPage} extra={extra}
+      pinned={pinned} postsInit={postsPage} reflInit={reflPage} highlights={(hl ?? []) as any} extra={extra}
     />
   )
 }

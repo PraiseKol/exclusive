@@ -5,7 +5,7 @@ import { Avatar } from './Avatar'
 import { ThemeToggle } from './ThemeToggle'
 import type { Me } from './AppShell'
 
-const LINKS = [['/profile/me', 'My profile'], ['/noted', 'Noted'], ['/circles', 'Circles'], ['/premium', 'Premium'], ['/help', 'Help Center'], ['/settings', 'Settings']]
+const LINKS = [['/profile/me', 'My profile'], ['/noted', 'Noted'], ['/circles', 'Circles'], ['/premium', 'Premium'], ['/monetization', 'Monetization'], ['/orgs', 'Organizations'], ['/help', 'Help Center'], ['/settings', 'Settings']]
 
 export function UserMenu({ me, email, onLogout }: { me: Me; email: string; onLogout: () => void }) {
   const [open, setOpen] = useState(false)

@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Avatar } from './Avatar'
 import { Drawer } from './Drawer'
 import { Icon } from './Icon'
-import { toast } from './Modal'
+import { toast, toastErr } from './Modal'
 import { NotificationsPanel } from './NotificationsPanel'
 import { PostModal } from './PostModal'
 import { SearchOverlay } from './SearchOverlay'
@@ -27,7 +27,9 @@ export function AppShell({ me, email, unread, pendingReq, counts, rail, children
   me: Me; suspended?: boolean; email: string; unread: number; pendingReq: number; counts: { up: number; down: number }; rail: ReactNode; children: ReactNode
 }) {
   const path = usePathname()
-  const from = useSearchParams().get('from')
+  const search = useSearchParams()
+  const from = search.get('from')
+  const paid = search.get('paid')
   // a post or reflection opens inside the feed it came from: Global Posts for global content, Home otherwise
   const ctx = path.startsWith('/post/') || path.startsWith('/reflection/') ? (from === 'global' ? '/global' : '/home') : null
   const router = useRouter()
@@ -38,6 +40,11 @@ export function AppShell({ me, email, unread, pendingReq, counts, rail, children
   const [reqDot, setReqDot] = useState(pendingReq > 0)
   const root = ROOTS.includes(path)
 
+  useEffect(() => {
+    if (paid === null) return
+    if (paid === '1') toast('Payment received. Thank you!'); else toastErr('The payment was not completed.')
+    router.replace(path)
+  }, [paid]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => setDot(unread > 0), [unread, path])
   useEffect(() => setReqDot(pendingReq > 0), [pendingReq, path])
   useEffect(() => { setDrawer(false); setPanel(null) }, [path])

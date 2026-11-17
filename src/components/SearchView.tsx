@@ -7,8 +7,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useSentinel } from '@/lib/useSentinel'
 import { INTERESTS } from '@/lib/util'
 
-const COLS = 'id,display_name,headline,avatar_url,username'
-type P = { id: string; display_name: string; headline: string; avatar_url: string | null; username: string | null }
+const COLS = 'id,display_name,headline,avatar_url,username,premium_tier,paid_slots_enabled,slot_price_kobo'
+type P = { id: string; display_name: string; headline: string; avatar_url: string | null; username: string | null; premium_tier?: number; paid_slots_enabled?: boolean; slot_price_kobo?: number | null }
 
 export function SearchView({ q, variant = 'grid', onNavigate }: { q: string; variant?: 'grid' | 'list'; onNavigate?: () => void }) {
   const [me, setMe] = useState('')
@@ -40,7 +40,7 @@ export function SearchView({ q, variant = 'grid', onNavigate }: { q: string; var
       setSentTo(new Set((pend ?? []).map((r: any) => r.mentor_id)))
       const mine: string[] = prof?.interests?.length ? prof.interests : INTERESTS.slice(0, 4)
       const out = await Promise.all(mine.slice(0, 5).map(async (interest) => {
-        const { data } = await sb.from('profiles').select(COLS).contains('interests', [interest]).neq('id', user.id).neq('display_name', '').limit(30)
+        const { data } = await sb.from('profiles').select(COLS).contains('interests', [interest]).neq('id', user.id).neq('display_name', '').order('premium_tier', { ascending: false }).limit(30)
         return { interest, people: (data ?? []) as P[] }
       }))
       let g = out.filter((x) => x.people.length)
@@ -56,7 +56,7 @@ export function SearchView({ q, variant = 'grid', onNavigate }: { q: string; var
     const topics = INTERESTS.filter((i) => i.toLowerCase().includes(term.toLowerCase())).map((i) => `interests.cs.{"${i}"}`)
     const filters = [`display_name.ilike.%${term}%`, `headline.ilike.%${term}%`, `username.ilike.%${term}%`, ...topics].join(',')
     const { data } = await createClient().from('profiles').select(COLS).neq('display_name', '').or(filters)
-      .order('display_name').order('id').range(from, from + SIZE - 1)
+      .order('premium_tier', { ascending: false }).order('display_name').order('id').range(from, from + SIZE - 1)
     return { rows: ((data ?? []) as P[]).filter((p) => p.id !== me), full: (data ?? []).length === SIZE }
   }
 
@@ -92,7 +92,7 @@ export function SearchView({ q, variant = 'grid', onNavigate }: { q: string; var
       <div className="pc">
         <Link href={`/profile/${p.id}`} className="pc-top">
           <Avatar name={p.display_name} url={p.avatar_url} size={64} />
-          <b style={{ fontWeight: 500 }}>{p.display_name}</b>
+          <b style={{ fontWeight: 500 }}>{p.display_name}{(p.premium_tier ?? 0) > 0 && <span className="pbadge" title="Premium member">💎</span>}</b>
           <span className="hl">{p.headline || (p.username ? '@' + p.username : '')}</span>
         </Link>
         <button className="mm" disabled={connected || sent} onClick={() => setReq(p)}>{connected ? 'In your circle' : sent ? 'Request sent' : 'Mentor me'}</button>
@@ -144,7 +144,7 @@ export function SearchView({ q, variant = 'grid', onNavigate }: { q: string; var
           </>
         )}
       </div>
-      {req && <RequestModal person={req} onClose={() => setReq(null)} onSent={() => setSentTo((s) => new Set(s).add(req.id))} />}
+      {req && <RequestModal person={{ id: req.id, display_name: req.display_name, slotPriceKobo: req.paid_slots_enabled ? req.slot_price_kobo : null }} onClose={() => setReq(null)} onSent={() => setSentTo((s) => new Set(s).add(req.id))} />}
     </>
   )
 }
