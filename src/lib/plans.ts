@@ -29,5 +29,6 @@ export const SLOT_PRICE = { minKobo: 50_000, maxKobo: 10_000_000 }
 export const PAYOUT_MIN_KOBO = 500_000
 export const SLOT_COMMISSION = 0.1 // the platform keeps 10% of a paid mentee slot (also set in the database function apply_payment)
 export const PERIOD_DAYS = 30
+export const SLOT_HOLD_DAYS = 7 // mentee-slot earnings are withdrawable this many days after payment (also set in the database function apply_payment). Tips are available at once.
 
 export const money = (kobo: number) => '₦' + (kobo / 100).toLocaleString('en-NG', { maximumFractionDigits: 0 })

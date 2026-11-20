@@ -21,6 +21,12 @@ export async function POST(req: Request) {
   if (b.kind === 'premium') {
     const tier = Number(b.tier)
     if (tier !== 1 && tier !== 2) return Response.json({ error: 'Choose a plan.' }, { status: 400 })
+    // A lower plan can't be bought while a higher one is still running (renewing and upgrading are fine).
+    const { data: sub } = await sb.from('subscriptions').select('tier,expires_at').eq('user_id', user.id).maybeSingle()
+    if (sub && sub.tier > tier && new Date(sub.expires_at) > new Date()) {
+      const until = new Date(sub.expires_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+      return Response.json({ error: `You’re on Premium Tier ${sub.tier} until ${until}. You can choose a lower plan after that.` }, { status: 400 })
+    }
     amount = PREMIUM_PLANS[tier].priceKobo; row.tier = tier
   } else if (b.kind === 'org_premium') {
     const tier = Number(b.tier)

@@ -21,7 +21,7 @@ export function PlanCards({ tier, expires }: { tier: number; expires: string | n
         <div style={{ fontSize: 24, fontWeight: 600 }}>{money(plan.priceKobo)} <span className="sub" style={{ fontSize: 14, fontWeight: 400 }}>/ {PERIOD_DAYS} days</span></div>
         <ul style={{ paddingLeft: 18, margin: '10px 0' }}>{plan.perks.map((p) => <li key={p} style={{ margin: '4px 0', fontSize: 14 }}>{p}</li>)}</ul>
         <button className="btn" style={{ width: '100%', padding: 12 }} disabled={busy !== null || (tier > t)} onClick={() => buy(t)}>
-          {busy === t ? 'Opening payment…' : tier > t ? 'Included in your plan' : current ? 'Renew for 30 more days' : tier > 0 ? 'Upgrade' : 'Choose ' + plan.name}
+          {busy === t ? 'Opening payment…' : tier > t ? `Available after ${expires ? new Date(expires).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'your plan ends'}` : current ? 'Renew for 30 more days' : tier > 0 ? 'Upgrade' : 'Choose ' + plan.name}
         </button>
       </div>
     )

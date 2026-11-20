@@ -4,19 +4,20 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { toast, toastErr } from '@/components/Modal'
 import { createClient } from '@/lib/supabase/client'
-import { PAYOUT_MIN_KOBO, SLOT_COMMISSION, SLOT_PRICE, money } from '@/lib/plans'
+import { PAYOUT_MIN_KOBO, SLOT_COMMISSION, SLOT_HOLD_DAYS, SLOT_PRICE, money } from '@/lib/plans'
 import { ago, errMsg } from '@/lib/util'
 
 type Props = {
   me: { premium_tier: number; tip_jar_enabled: boolean; paid_slots_enabled: boolean; slot_price_kobo: number | null }
-  balance: { earned: number; withdrawn: number }
+  balance: { earned: number; released: number; pending: number; nextRelease: string | null; withdrawn: number }
   earnings: any[]; account: { bank_name: string; account_name: string; account_last4: string } | null; payouts: any[]
 }
 
 export function MonetizationView({ me, balance, earnings, account, payouts }: Props) {
   const sb = createClient()
   const router = useRouter()
-  const available = balance.earned - balance.withdrawn
+  const available = Math.max(0, balance.released - balance.withdrawn)
+  const day = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
   const [price, setPrice] = useState(me.slot_price_kobo ? String(me.slot_price_kobo / 100) : '')
   const [banks, setBanks] = useState<{ name: string; code: string }[] | null>(null)
   const [bank, setBank] = useState('')
@@ -74,6 +75,12 @@ export function MonetizationView({ me, balance, earnings, account, payouts }: Pr
         <div className="sub">Available to withdraw</div>
         <div style={{ fontSize: 28, fontWeight: 600 }}>{money(available)}</div>
         <div className="sub" style={{ fontSize: 13 }}>Total earned {money(balance.earned)} · Requested or paid out {money(balance.withdrawn)}</div>
+        {balance.pending > 0 && (
+          <div className="sub" style={{ fontSize: 13, marginTop: 8 }}>
+            <b style={{ fontWeight: 500 }}>Pending {money(balance.pending)}</b>{balance.nextRelease ? ` · next release on ${day(balance.nextRelease)}` : ''}
+          </div>
+        )}
+        <div className="sub" style={{ fontSize: 12, marginTop: 8 }}>Tips are available straight away. Mentee slot earnings are released {SLOT_HOLD_DAYS} days after the mentee pays, in case of a refund.</div>
       </section>
 
       <section>
@@ -140,8 +147,8 @@ export function MonetizationView({ me, balance, earnings, account, payouts }: Pr
         {earnings.length === 0 && <p className="sub">Nothing yet. Tips and paid mentee slots will appear here.</p>}
         {earnings.map((e) => (
           <div key={e.id} className="row" style={{ padding: '8px 0' }}>
-            <div className="grow">{e.kind === 'tip' ? 'Tip' : 'Mentee slot'}{e.from?.display_name ? ` from ${e.from.display_name}` : ''}<div className="sub">{ago(e.created_at)} ago{e.fee_kobo > 0 ? ` · fee ${money(e.fee_kobo)}` : ''}</div></div>
-            <b style={{ fontWeight: 500 }}>+{money(e.net_kobo)}</b>
+            <div className="grow">{e.kind === 'tip' ? 'Tip' : 'Mentee slot'}{e.from?.display_name ? ` from ${e.from.display_name}` : ''}<div className="sub">{ago(e.created_at)} ago{e.fee_kobo > 0 ? ` · fee ${money(e.fee_kobo)}` : ''}{new Date(e.available_at) > new Date() ? ` · releases ${day(e.available_at)}` : ''}</div></div>
+            <b style={{ fontWeight: 500 }}>+{money(e.net_kobo)}</b>{new Date(e.available_at) > new Date() && <span className="chip" style={{ marginLeft: 8 }}>Pending</span>}
           </div>
         ))}
       </section>
