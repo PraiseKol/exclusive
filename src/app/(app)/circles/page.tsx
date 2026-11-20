@@ -7,6 +7,7 @@ import { DEFAULT_DURATION, DurationPicker, durationArgs, durationLabel, duration
 import { Modal, toast, toastErr } from '@/components/Modal'
 import { createClient } from '@/lib/supabase/client'
 import { startCheckout } from '@/lib/checkout'
+import { markNotificationsRead } from '@/lib/notifications'
 import { money } from '@/lib/plans'
 import { ago, errMsg } from '@/lib/util'
 
@@ -36,10 +37,15 @@ export default function Circles() {
     const [a, b, c] = await Promise.all([
       sb.from('mentor_requests').select('id,goal,created_at,requester:profiles!mentor_requests_requester_id_fkey(id,display_name,headline,avatar_url)').eq('mentor_id', user.id).eq('status', 'pending').order('created_at', { ascending: false }),
       sb.from('mentor_requests').select('id,created_at,mentor:profiles!mentor_requests_mentor_id_fkey(id,display_name,headline,avatar_url)').eq('requester_id', user.id).eq('status', 'pending').order('created_at', { ascending: false }),
-      sb.from('notifications').select('id,type,body,created_at,actor:profiles!notifications_actor_id_fkey(display_name)').in('type', ['accepted', 'declined', 'renewed', 'expiring']).order('created_at', { ascending: false }).limit(30),
+      sb.from('notifications').select('id,type,body,read,created_at,actor:profiles!notifications_actor_id_fkey(display_name)').in('type', ['accepted', 'declined', 'renewed', 'expiring']).order('created_at', { ascending: false }).limit(30),
     ])
     setRec(a.data ?? []); setSent(b.data ?? []); setUpd(c.data ?? [])
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // Circle updates (accepted, declined, renewed, expiring) count as read once they have been listed here.
+  useEffect(() => {
+    const ids = upd.filter((u) => !u.read).map((u) => u.id)
+    if (ids.length) markNotificationsRead(ids).then(() => router.refresh())
+  }, [upd]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { load() }, [load])
 
   async function respond(r: any, accept: boolean) {

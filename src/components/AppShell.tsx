@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { NOTIF_EVENT } from '@/lib/notifications'
 import { Avatar } from './Avatar'
 import { Drawer } from './Drawer'
 import { Icon } from './Icon'
@@ -45,18 +46,27 @@ export function AppShell({ me, email, unread, pendingReq, counts, rail, children
     if (paid === '1') toast('Payment received. Thank you!'); else toastErr('The payment was not completed.')
     router.replace(path)
   }, [paid]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => setDot(unread > 0), [unread, path])
-  useEffect(() => setReqDot(pendingReq > 0), [pendingReq, path])
+  // Sync from the server only when the server value itself changes. Re-syncing on every path change
+  // used to bring the dot back for notifications that had already been read.
+  useEffect(() => setDot(unread > 0), [unread])
+  useEffect(() => setReqDot(pendingReq > 0), [pendingReq])
   useEffect(() => { setDrawer(false); setPanel(null) }, [path])
   useEffect(() => {
     const open = () => setComposer(true)
     window.addEventListener('open-composer', open)
     const sb = createClient()
+    // The badge always reflects the real number of unread notifications.
+    const syncDot = async () => {
+      const { count } = await sb.from('notifications').select('id', { count: 'exact', head: true }).eq('user_id', me.id).eq('read', false)
+      setDot((count ?? 0) > 0)
+    }
     const ch = sb.channel('notif-' + me.id)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${me.id}` },
         (p: any) => { setDot(true); if (p.new?.type === 'request') setReqDot(true) })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${me.id}` }, syncDot)
       .subscribe()
-    return () => { window.removeEventListener('open-composer', open); sb.removeChannel(ch) }
+    window.addEventListener(NOTIF_EVENT, syncDot)
+    return () => { window.removeEventListener('open-composer', open); window.removeEventListener(NOTIF_EVENT, syncDot); sb.removeChannel(ch) }
   }, [me.id])
 
   const logout = useCallback(async () => {
@@ -66,7 +76,7 @@ export function AppShell({ me, email, unread, pendingReq, counts, rail, children
 
   // On desktop, Search and Notifications open as overlays (per the design); on phones they are normal pages.
   const intercept = (kind: 'notif' | 'search') => (e: React.MouseEvent) => {
-    if (isDesktop()) { e.preventDefault(); setPanel(panel === kind ? null : kind); if (kind === 'notif') setDot(false) }
+    if (isDesktop()) { e.preventDefault(); setPanel(panel === kind ? null : kind) }
   }
 
   return (

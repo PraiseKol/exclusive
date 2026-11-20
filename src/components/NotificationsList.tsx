@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { markNotificationsRead } from '@/lib/notifications'
 import { useSentinel } from '@/lib/useSentinel'
 import { ago } from '@/lib/util'
 import { Avatar } from './Avatar'
@@ -32,7 +33,10 @@ export function NotificationsList({ onNavigate }: { onNavigate?: () => void }) {
     if (t === 'mentions') q = q.in('type', MENTION_TYPES)
     if (!reset && current.length) q = q.lt('created_at', current[current.length - 1].created_at)
     const { data } = await q
-    const rows = data ?? []
+    // `isNew` only styles this visit; the database copy is marked read as soon as it has been shown.
+    const rows = (data ?? []).map((r: any) => ({ ...r, isNew: !r.read }))
+    const fresh = rows.filter((r: any) => r.isNew).map((r: any) => r.id)
+    if (fresh.length) markNotificationsRead(fresh).then(() => router.refresh())
     setList((prev) => (reset ? rows : [...prev, ...rows.filter((r: any) => !prev.some((p) => p.id === r.id))]))
     setMore(rows.length === SIZE)
     busy.current = false; setLoading(false)
@@ -50,10 +54,9 @@ export function NotificationsList({ onNavigate }: { onNavigate?: () => void }) {
   const sentinel = useSentinel(() => page(false, list, tab), more && list.length > 0, list.length)
 
   async function markAll() {
-    const { data: { user } } = await sb.auth.getUser()
-    if (!user) return
-    await sb.from('notifications').update({ read: true }).eq('user_id', user.id).eq('read', false)
-    setList((l) => l.map((n) => ({ ...n, read: true }))); router.refresh()
+    const ok = await markNotificationsRead()
+    if (!ok) return
+    setList((l) => l.map((n) => ({ ...n, read: true, isNew: false }))); router.refresh()
   }
 
   const Row = ({ n }: { n: any }) => (
@@ -63,7 +66,7 @@ export function NotificationsList({ onNavigate }: { onNavigate?: () => void }) {
         <div style={{ fontSize: 14 }}>{n.actor?.display_name && <b style={{ fontWeight: 500 }}>{n.actor.display_name} </b>}{n.type === 'comment' ? 'commented on your post: ' : n.type === 'reflection' ? 'reflected on your post: ' : ''}{n.body}</div>
         <div className="sub" style={{ fontSize: 12 }}>{ago(n.created_at)} ago</div>
       </div>
-      {!n.read && <i style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--b600)', flex: 'none' }} aria-label="Unread" />}
+      {n.isNew && <i style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--b600)', flex: 'none' }} aria-label="New" />}
     </>
   )
 
@@ -80,10 +83,10 @@ export function NotificationsList({ onNavigate }: { onNavigate?: () => void }) {
       </div>
       {list.map((n) =>
         n.type === 'request' && n.ref_id ? (
-          <button key={n.id} className="row" style={{ padding: '12px 20px', opacity: n.read ? 0.75 : 1 }} onClick={() => setReview(n.ref_id)}><Row n={n} /></button>
+          <button key={n.id} className="row" style={{ padding: '12px 20px', opacity: n.isNew ? 1 : 0.75 }} onClick={() => setReview(n.ref_id)}><Row n={n} /></button>
         ) : (
           <Link key={n.id} href={n.type === 'accepted' || n.type === 'payment_due' ? '/circles' : n.type === 'tip' || n.type === 'payment_received' ? '/monetization' : n.type === 'premium' ? '/premium' : n.type === 'org_invite' || n.type === 'org_update' ? '/orgs' : n.type === 'highlight' ? '/profile/me' : n.type === 'reflection' && n.ref_id ? `/reflection/${n.ref_id}` : n.post_id ? `/post/${n.post_id}` : n.actor ? `/profile/${n.actor.id}` : '/home'} onClick={onNavigate}
-            className="row" style={{ padding: '12px 20px', opacity: n.read ? 0.75 : 1 }}><Row n={n} /></Link>
+            className="row" style={{ padding: '12px 20px', opacity: n.isNew ? 1 : 0.75 }}><Row n={n} /></Link>
         )
       )}
       {!loading && list.length === 0 && <div className="empty">You are all caught up.</div>}
