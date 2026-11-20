@@ -31,8 +31,13 @@ export async function POST(req: Request) {
   } else if (b.kind === 'org_premium') {
     const tier = Number(b.tier)
     if (![1, 2, 3].includes(tier)) return Response.json({ error: 'Choose a plan.' }, { status: 400 })
-    const { data: org } = await sb.from('organizations').select('id,owner_id').eq('id', b.orgId).maybeSingle()
+    const { data: org } = await sb.from('organizations').select('id,owner_id,tier,tier_expires_at').eq('id', b.orgId).maybeSingle()
     if (!org || org.owner_id !== user.id) return Response.json({ error: 'Only the organization owner can change its plan.' }, { status: 403 })
+    // Same rule as Premium: a lower plan can't replace a higher one that is still running.
+    if (org.tier > tier && org.tier_expires_at && new Date(org.tier_expires_at) > new Date()) {
+      const until = new Date(org.tier_expires_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+      return Response.json({ error: `This organization is on Tier ${org.tier} until ${until}. You can choose a lower plan after that.` }, { status: 400 })
+    }
     amount = ORG_PLANS[tier as 1 | 2 | 3].priceKobo; row.tier = tier; row.target_org = org.id
   } else if (b.kind === 'tip') {
     const target = String(b.targetUser ?? '')

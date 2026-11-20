@@ -25,9 +25,10 @@ export const ORG_PLANS: Record<1 | 2 | 3, { priceKobo: number; seats: string }> 
 export const ORG_FREE_SEATS = '1 management, 3 middle, 0 ambassadors'
 
 export const TIP = { minKobo: 10_000, maxKobo: 10_000_000, presets: [20_000, 50_000, 100_000, 200_000] }
-export const SLOT_PRICE = { minKobo: 50_000, maxKobo: 10_000_000 }
+export const SLOT_PRICE = { minKobo: 200_000, maxKobo: 10_000_000 } // min NGN 2,000 so the 10% commission always covers Paystack's fee (also enforced in the database)
 export const PAYOUT_MIN_KOBO = 500_000
 export const SLOT_COMMISSION = 0.1 // the platform keeps 10% of a paid mentee slot (also set in the database function apply_payment)
+export const TIP_COMMISSION = 0.1 // the platform keeps 10% of a tip to cover payment fees (also set in the database function apply_payment)
 export const PERIOD_DAYS = 30
 export const SLOT_HOLD_DAYS = 7 // mentee-slot earnings are withdrawable this many days after payment (also set in the database function apply_payment). Tips are available at once.
 

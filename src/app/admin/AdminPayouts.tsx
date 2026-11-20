@@ -10,6 +10,7 @@ export function AdminPayouts() {
   const [rows, setRows] = useState<any[] | null>(null)
   const [busy, setBusy] = useState('')
   const [refunds, setRefunds] = useState<any[]>([])
+  const [held, setHeld] = useState<any[]>([])
 
   const load = useCallback(async () => {
     const { data, error } = await sb.rpc('admin_list_payouts', { p_status: 'requested' })
@@ -17,6 +18,8 @@ export function AdminPayouts() {
     setRows((data as any[]) ?? [])
     const { data: rf } = await sb.from('payments').select('id,reference,amount_kobo,created_at,user:profiles!payments_user_id_fkey(display_name)').eq('needs_refund', true).order('created_at', { ascending: false }).limit(50)
     setRefunds(rf ?? [])
+    const { data: hs } = await sb.rpc('admin_list_held_slots')
+    setHeld((hs as any[]) ?? [])
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { load() }, [load])
 
@@ -36,6 +39,13 @@ export function AdminPayouts() {
     toast('Updated'); load()
   }
 
+  async function refundSlot(id: string) {
+    if (!window.confirm('Refund this mentee slot? The mentor’s pending earning is cancelled, the mentorship ends, and the payment moves to “Refunds needed” so you can return the money in Paystack.')) return
+    const { error } = await sb.rpc('admin_refund_slot', { p_payment: id })
+    if (error) return toastErr(errMsg(error))
+    toast('Slot refunded. Return the money in Paystack.'); load()
+  }
+
   async function clearRefund(id: string) {
     const { error } = await sb.rpc('admin_clear_refund', { p_id: id })
     if (error) return toastErr(errMsg(error))
@@ -44,6 +54,19 @@ export function AdminPayouts() {
 
   return (
     <>
+      {held.length > 0 && (
+        <section className="tip" style={{ margin: '12px 0' }}>
+          <b style={{ fontWeight: 500 }}>Mentee slot payments on hold</b>
+          <div style={{ fontSize: 13, margin: '4px 0 8px' }}>These payments are still inside the 7-day hold, so the money has not reached the mentor yet. If a mentee disputes one, refund it here.</div>
+          {held.map((h) => (
+            <div key={h.payment_id} className="row" style={{ padding: '4px 0' }}>
+              <div className="grow" style={{ whiteSpace: 'normal' }}>{h.mentee_name} → {h.mentor_name} · {money(h.amount_kobo)}
+                <div className="sub" style={{ whiteSpace: 'normal' }}>Releases {new Date(h.available_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} · {h.reference}</div></div>
+              <button className="btn sec" onClick={() => refundSlot(h.payment_id)}>Refund</button>
+            </div>
+          ))}
+        </section>
+      )}
       {refunds.length > 0 && (
         <section className="tip" style={{ margin: '12px 0' }}>
           <b style={{ fontWeight: 500 }}>Refunds needed</b>

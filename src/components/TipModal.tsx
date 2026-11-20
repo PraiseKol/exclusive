@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { startCheckout } from '@/lib/checkout'
-import { TIP, money } from '@/lib/plans'
+import { TIP, TIP_COMMISSION, money } from '@/lib/plans'
 import { Modal, toastErr } from './Modal'
 
 export function TipModal({ person, onClose }: { person: { id: string; display_name: string }; onClose: () => void }) {
@@ -22,7 +22,7 @@ export function TipModal({ person, onClose }: { person: { id: string; display_na
   return (
     <Modal title={`Tip ${person.display_name}`} onClose={onClose}>
       <div className="mb">
-        <p className="sub" style={{ margin: 0 }}>A small thank-you for their help. {person.display_name} receives the full amount.</p>
+        <p className="sub" style={{ margin: 0 }}>A small thank-you for their help. The platform keeps {TIP_COMMISSION * 100}% to cover payment fees{valid ? `, so ${person.display_name} receives ${money(Math.round(amount * (1 - TIP_COMMISSION)))}` : ''}.</p>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {TIP.presets.map((p) => (
             <button key={p} className={'pill' + (!custom && kobo === p ? ' on' : '')} onClick={() => { setKobo(p); setCustom('') }}>{money(p)}</button>

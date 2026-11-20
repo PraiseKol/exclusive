@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { toast, toastErr } from '@/components/Modal'
 import { createClient } from '@/lib/supabase/client'
-import { PAYOUT_MIN_KOBO, SLOT_COMMISSION, SLOT_HOLD_DAYS, SLOT_PRICE, money } from '@/lib/plans'
+import { PAYOUT_MIN_KOBO, SLOT_COMMISSION, SLOT_HOLD_DAYS, SLOT_PRICE, TIP_COMMISSION, money } from '@/lib/plans'
 import { ago, errMsg } from '@/lib/util'
 
 type Props = {
@@ -85,7 +85,7 @@ export function MonetizationView({ me, balance, earnings, account, payouts }: Pr
 
       <section>
         <b style={{ fontWeight: 500 }}>Tip Jar</b>
-        <p className="sub" style={{ margin: '4px 0 8px' }}>Let people send you small tips. You keep the full amount.</p>
+        <p className="sub" style={{ margin: '4px 0 8px' }}>Let people send you small tips. The platform keeps {TIP_COMMISSION * 100}% of each tip to cover payment fees.</p>
         {!tipOk && <p className="tip">Tip Jar needs <Link className="lk" href="/premium">Premium Tier 2</Link>.</p>}
         <button className={'pill' + (me.tip_jar_enabled ? ' on' : '')} disabled={!tipOk} onClick={() => flag('tip_jar_enabled', !me.tip_jar_enabled)}>{me.tip_jar_enabled ? 'On' : 'Off'}</button>
       </section>
@@ -94,7 +94,7 @@ export function MonetizationView({ me, balance, earnings, account, payouts }: Pr
         <b style={{ fontWeight: 500 }}>Paid mentee slots</b>
         <p className="sub" style={{ margin: '4px 0 8px' }}>Charge people for a place among your mentees. They pay only after you accept their request. The platform keeps {SLOT_COMMISSION * 100}%.</p>
         {!slotsOk && <p className="tip">Paid slots need <Link className="lk" href="/premium">Premium</Link>.</p>}
-        <label className="lab">Price per mentee slot (₦)
+        <label className="lab">Price per mentee slot (₦, minimum {money(SLOT_PRICE.minKobo)})
           <input className="t" type="number" inputMode="numeric" min={SLOT_PRICE.minKobo / 100} max={SLOT_PRICE.maxKobo / 100} value={price} onChange={(e) => setPrice(e.target.value)} disabled={!slotsOk} />
         </label>
         <div style={{ display: 'flex', gap: 10, marginTop: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -147,8 +147,8 @@ export function MonetizationView({ me, balance, earnings, account, payouts }: Pr
         {earnings.length === 0 && <p className="sub">Nothing yet. Tips and paid mentee slots will appear here.</p>}
         {earnings.map((e) => (
           <div key={e.id} className="row" style={{ padding: '8px 0' }}>
-            <div className="grow">{e.kind === 'tip' ? 'Tip' : 'Mentee slot'}{e.from?.display_name ? ` from ${e.from.display_name}` : ''}<div className="sub">{ago(e.created_at)} ago{e.fee_kobo > 0 ? ` · fee ${money(e.fee_kobo)}` : ''}{new Date(e.available_at) > new Date() ? ` · releases ${day(e.available_at)}` : ''}</div></div>
-            <b style={{ fontWeight: 500 }}>+{money(e.net_kobo)}</b>{new Date(e.available_at) > new Date() && <span className="chip" style={{ marginLeft: 8 }}>Pending</span>}
+            <div className="grow">{e.kind === 'tip' ? 'Tip' : 'Mentee slot'}{e.from?.display_name ? ` from ${e.from.display_name}` : ''}<div className="sub">{ago(e.created_at)} ago{e.fee_kobo > 0 ? ` · fee ${money(e.fee_kobo)}` : ''}{!e.refunded_at && new Date(e.available_at) > new Date() ? ` · releases ${day(e.available_at)}` : ''}</div></div>
+            {e.refunded_at ? <span className="chip">Refunded</span> : <><b style={{ fontWeight: 500 }}>+{money(e.net_kobo)}</b>{new Date(e.available_at) > new Date() && <span className="chip" style={{ marginLeft: 8 }}>Pending</span>}</>}
           </div>
         ))}
       </section>

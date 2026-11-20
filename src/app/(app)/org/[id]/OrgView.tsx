@@ -127,7 +127,7 @@ export function OrgView({ org, members, meId, first }: { org: any; members: any[
               <div key={t} className={'plan' + (org.tier === t ? ' cur' : '')}>
                 <div className="planh"><b style={{ fontWeight: 500 }}>Tier {t} · {money(ORG_PLANS[t].priceKobo)} / {PERIOD_DAYS} days</b>{org.tier === t && <span className="chip">Current</span>}</div>
                 <div className="sub" style={{ fontSize: 13, marginBottom: 8 }}>{ORG_PLANS[t].seats}</div>
-                <button className="btn" disabled={paying !== null || org.tier > t} onClick={() => upgrade(t)}>{org.tier === t ? 'Renew' : org.tier > t ? 'Included' : 'Choose Tier ' + t}</button>
+                <button className="btn" disabled={paying !== null || org.tier > t} onClick={() => upgrade(t)}>{org.tier === t ? 'Renew' : org.tier > t ? `Available after ${org.tier_expires_at ? new Date(org.tier_expires_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : 'your plan ends'}` : 'Choose Tier ' + t}</button>
               </div>
             ))}
           </div>
