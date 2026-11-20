@@ -1,4 +1,4 @@
-const COL = ['#4b0082', '#0f766e', '#b45309', '#be185d', '#1d4ed8', '#4d7c0f', '#7c3aed', '#b91c1c']
+const COL = ['#0b5d55', '#b4531a', '#6b4ea0', '#b03a63', '#1f5fa8', '#5c7f1e', '#8a6d00', '#a63d2f']
 
 export function Avatar({ name, url, size = 38 }: { name?: string | null; url?: string | null; size?: number }) {
   const n = name || '?'

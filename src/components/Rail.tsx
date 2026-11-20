@@ -15,12 +15,11 @@ export async function Rail({ meId, tier }: { meId: string; tier: number }) {
     <>
       <div className="rail-scroll">
       <div className="prem">
-        <b>💎 Go Premium. Go Further.</b>
+        <b>Go further with Premium</b>
         {tier > 0
           ? 'You are on Premium. Extra slots, DMs and scheduling are on.'
-          : 'Unlock exclusive mentors, advanced tools and priority support for your growth journey.'}
+          : 'More mentorship slots, scheduling, post editing and a Tip Jar.'}
         {tier === 0 && <div><UpgradeButton /></div>}
-        <span className="crown" aria-hidden="true">👑</span>
       </div>
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>

@@ -72,9 +72,9 @@ export function NotificationsList({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <>
-      <div className="tabs" style={{ gap: 18, padding: '0 20px' }}>
+      <div className="tabs">
         {(['all', 'mentions', 'requests'] as const).map((t) => (
-          <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)} style={{ fontSize: 15, display: 'flex', gap: 6, alignItems: 'center' }}>
+          <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)} style={{ gap: 6 }}>
             {t[0].toUpperCase() + t.slice(1)} {counts[t] > 0 && <span className="chip">{counts[t]}</span>}
           </button>
         ))}
