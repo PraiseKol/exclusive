@@ -2,8 +2,9 @@ import type { Metadata, Viewport } from 'next'
 import { Public_Sans } from 'next/font/google'
 import { Toaster } from '@/components/Modal'
 import './globals.css'
+import './polish.css'
 
-const font = Public_Sans({ subsets: ['latin'], weight: ['400', '500'], variable: '--font' })
+const font = Public_Sans({ subsets: ['latin'], weight: ['400', '500', '600'], variable: '--font' })
 
 export const metadata: Metadata = { title: 'Exclusive', description: 'Meaningful & intentional relationships are built here.' }
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover' }

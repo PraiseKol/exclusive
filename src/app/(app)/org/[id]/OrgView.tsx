@@ -102,9 +102,9 @@ export function OrgView({ org, members, meId, first }: { org: any; members: any[
       {owner && (
         <section>
           <b style={{ fontWeight: 500 }}>Invite someone</b>
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <input className="t" placeholder="Search people by name" value={q} onChange={(e) => search(e.target.value)} />
-            <select value={role} onChange={(e) => setRole(e.target.value as (typeof ROLES)[number])} style={{ width: 150 }} aria-label="Role">
+          <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+            <input className="t" placeholder="Search people by name" value={q} onChange={(e) => search(e.target.value)} style={{ flex: '1 1 180px' }} />
+            <select value={role} onChange={(e) => setRole(e.target.value as (typeof ROLES)[number])} style={{ flex: '0 1 150px', width: 'auto' }} aria-label="Role">
               {ROLES.map((r) => <option key={r} value={r}>{ROLE[r]}</option>)}
             </select>
           </div>

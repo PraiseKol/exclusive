@@ -81,6 +81,7 @@ export function AppShell({ me, email, unread, pendingReq, counts, rail, children
 
   return (
     <div className="shell">
+      <a href="#main" className="skip">Skip to content</a>
       <nav className="side" aria-label="Main">
         <div>
           <i className="logo" />
@@ -99,7 +100,7 @@ export function AppShell({ me, email, unread, pendingReq, counts, rail, children
         </div>
         <div className="sidefoot"><UserMenu me={me} email={email} onLogout={logout} /></div>
       </nav>
-      <main>
+      <main id="main">
         <div className="tb">
           {root ? (
             <button onClick={() => setDrawer(true)} aria-label="Open menu"><Avatar name={me.display_name} url={me.avatar_url} size={34} /></button>
