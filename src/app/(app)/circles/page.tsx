@@ -71,6 +71,7 @@ export default function Circles() {
       </div>
       {tab === 'requests' && (
         <>
+          {awaiting.some((c) => c.mentee_id === meId) && <div className="payhead"><b>Payment needed</b><span className="sub">Pay to start the mentorship. It begins as soon as the payment goes through.</span></div>}
           {awaiting.map((c) => {
             const mine = c.mentee_id === meId
             const other = mine ? c.mentor : c.mentee
@@ -78,9 +79,9 @@ export default function Circles() {
               <div key={c.id} className="row rq">
                 <Avatar name={other.display_name} url={other.avatar_url} size={44} />
                 <div className="grow" style={{ whiteSpace: 'normal' }}>
-                  {mine ? `Pay ${money(c.mentor.slot_price_kobo ?? 0)} to start your mentorship with ${other.display_name}` : `Waiting for ${other.display_name} to pay`}
+                  {mine ? `${other.display_name} accepted. Pay ${money(c.mentor.slot_price_kobo ?? 0)} to start your mentorship.` : `Accepted. Waiting for ${other.display_name} to pay ${money(c.mentor.slot_price_kobo ?? 0)}.`}
                 </div>
-                {mine && <button className="btn" disabled={paying === c.id} onClick={async () => { setPaying(c.id); const ok = await startCheckout({ kind: 'slot', connId: c.id }); if (!ok) setPaying('') }}>Pay</button>}
+                {mine && <button className="btn" disabled={paying === c.id} onClick={async () => { setPaying(c.id); const ok = await startCheckout({ kind: 'slot', connId: c.id }); if (!ok) setPaying('') }}>{`Pay ${money(c.mentor.slot_price_kobo ?? 0)}`}</button>}
                 <button className="cancelb" onClick={async () => { const { error } = await sb.rpc('end_connection', { p_conn: c.id }); if (error) return toastErr(errMsg(error)); toast('Cancelled'); load() }}>Cancel</button>
               </div>
             )

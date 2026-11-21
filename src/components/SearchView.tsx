@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
+import { money } from '@/lib/plans'
 import { Avatar } from '@/components/Avatar'
 import { RequestModal } from '@/components/RequestModal'
 import { createClient } from '@/lib/supabase/client'
@@ -94,6 +95,7 @@ export function SearchView({ q, variant = 'grid', onNavigate }: { q: string; var
           <Avatar name={p.display_name} url={p.avatar_url} size={64} />
           <b style={{ fontWeight: 500 }}>{p.display_name}{(p.premium_tier ?? 0) > 0 && <span className="pbadge" title="Premium member">💎</span>}</b>
           <span className="hl">{p.headline || (p.username ? '@' + p.username : '')}</span>
+          {p.paid_slots_enabled && p.slot_price_kobo ? <span className="slotchip">{money(p.slot_price_kobo)} per slot</span> : null}
         </Link>
         <button className="mm" disabled={connected || sent} onClick={() => setReq(p)}>{connected ? 'In your circle' : sent ? 'Request sent' : 'Mentor me'}</button>
       </div>

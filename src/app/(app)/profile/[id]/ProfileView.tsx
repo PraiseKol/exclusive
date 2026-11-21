@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { Avatar } from '@/components/Avatar'
 import { Icon } from '@/components/Icon'
 import { Modal, toast, toastErr } from '@/components/Modal'
+import { money } from '@/lib/plans'
 import { RequestModal } from '@/components/RequestModal'
 import { SharedLogModal } from '@/components/SharedLogModal'
 import { TipModal } from '@/components/TipModal'
@@ -33,6 +34,8 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
   const [pid, setPid] = useState<string | null>(pendingId)
   useEffect(() => { if (mine) sweepOrphans(sb, meId, profile.avatar_url).catch(() => {}) }, [mine, meId]) // eslint-disable-line react-hooks/exhaustive-deps
   const tier = profile.premium_tier as number
+
+  const paidSlot = !!(profile.paid_slots_enabled && profile.slot_price_kobo)
 
   async function cancelRequest() {
     if (!pid) return
@@ -100,7 +103,8 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
             <>
               {pid && !connected
                 ? <button className="bo pm-cta" onClick={cancelRequest}>Cancel request</button>
-                : <button className="btn pm-cta" disabled={connected} onClick={() => setSheet('request')}>{connected ? 'In your circle' : 'Mentor me'}</button>}
+                : <button className="btn pm-cta" disabled={connected} onClick={() => setSheet('request')}>{connected ? 'In your circle' : paidSlot ? `Mentor me · ${money(profile.slot_price_kobo)}` : 'Mentor me'}</button>}
+              {paidSlot && !connected && !pid && <p className="slotnote">{profile.display_name} charges {money(profile.slot_price_kobo)} for a mentee slot. You send a request first and pay only after they accept.</p>}
               {(connected || profile.tip_jar_enabled) && (
                 <div className="pm-links">
                   {connected && <Link className="lk" href={`/messages?to=${profile.id}`}>Message</Link>}
@@ -142,7 +146,7 @@ export function ProfileView({ profile, meId, mine, connected, pendingId, initial
                 {connected && connId && <button className="bo" style={{ padding: '10px 14px', borderRadius: 8, color: '#d92d20', borderColor: '#d92d20' }} onClick={() => setSheet('end')}>End connection</button>}
                 {pid && !connected
                   ? <button className="bo" style={{ padding: '10px 14px', borderRadius: 8 }} onClick={cancelRequest}>Cancel request</button>
-                  : <button className="btn" disabled={connected} onClick={() => setSheet('request')}>{connected ? 'In your circle' : 'Mentor me'}</button>}
+                  : <button className="btn" disabled={connected} onClick={() => setSheet('request')}>{connected ? 'In your circle' : paidSlot ? `Mentor me · ${money(profile.slot_price_kobo)}` : 'Mentor me'}</button>}
                 <button className="rate dskonly" aria-label="More options" onClick={() => setSheet('more')}>⋯</button>
               </>
             )}

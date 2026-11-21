@@ -62,7 +62,7 @@ export function AppShell({ me, email, unread, pendingReq, counts, rail, children
     }
     const ch = sb.channel('notif-' + me.id)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${me.id}` },
-        (p: any) => { setDot(true); if (p.new?.type === 'request') setReqDot(true) })
+        (p: any) => { setDot(true); if (p.new?.type === 'request' || p.new?.type === 'payment_due') setReqDot(true) })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${me.id}` }, syncDot)
       .subscribe()
     window.addEventListener(NOTIF_EVENT, syncDot)
